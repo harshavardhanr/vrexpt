@@ -1,0 +1,2069 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VR Concert - WebXR Experience</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;600&display=swap');
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Rajdhani', sans-serif;
+            background: linear-gradient(135deg, #0d0015 0%, #1a0a2e 30%, #16213e 70%, #0d0015 100%);
+            color: #fff;
+            min-height: 100vh;
+            overflow: hidden;
+        }
+        
+        #info {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            text-align: center;
+            z-index: 100;
+            pointer-events: none;
+        }
+        
+        #info h1 {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 2.8rem;
+            font-weight: 900;
+            letter-spacing: 12px;
+            background: linear-gradient(135deg, #ff006e, #8338ec, #3a86ff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-shadow: none;
+            filter: drop-shadow(0 0 30px rgba(131, 56, 236, 0.6));
+            margin-bottom: 8px;
+        }
+        
+        #info p {
+            font-weight: 300;
+            font-size: 1rem;
+            color: rgba(255, 255, 255, 0.6);
+            letter-spacing: 4px;
+            text-transform: uppercase;
+        }
+        
+        #venue-info {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(15px);
+            border: 1px solid rgba(131, 56, 236, 0.4);
+            border-radius: 20px;
+            padding: 20px 28px;
+            z-index: 100;
+        }
+        
+        #venue-info h2 {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.2rem;
+            letter-spacing: 3px;
+            color: #8338ec;
+            margin-bottom: 12px;
+        }
+        
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            margin: 8px 0;
+            font-size: 0.9rem;
+        }
+        
+        .info-label {
+            color: rgba(255, 255, 255, 0.5);
+        }
+        
+        .info-value {
+            color: #ff006e;
+            font-weight: 600;
+        }
+        
+        #vr-button {
+            position: absolute;
+            bottom: 40px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 18px 55px;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.2rem;
+            font-weight: 700;
+            letter-spacing: 5px;
+            background: linear-gradient(135deg, #ff006e 0%, #8338ec 50%, #3a86ff 100%);
+            color: #fff;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            z-index: 100;
+            transition: all 0.3s ease;
+            box-shadow: 0 10px 50px rgba(131, 56, 236, 0.5),
+                        inset 0 1px 0 rgba(255, 255, 255, 0.2);
+        }
+        
+        #vr-button:hover {
+            transform: translateX(-50%) scale(1.05);
+            box-shadow: 0 15px 60px rgba(131, 56, 236, 0.7),
+                        inset 0 1px 0 rgba(255, 255, 255, 0.3);
+        }
+        
+        #vr-button:disabled {
+            background: linear-gradient(135deg, #333 0%, #222 100%);
+            color: #666;
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+        
+        #controls-info {
+            position: absolute;
+            bottom: 120px;
+            left: 50%;
+            transform: translateX(-50%);
+            text-align: center;
+            z-index: 100;
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(15px);
+            padding: 18px 35px;
+            border-radius: 15px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        #controls-info p {
+            font-size: 0.85rem;
+            color: rgba(255, 255, 255, 0.6);
+            margin: 6px 0;
+        }
+        
+        #controls-info strong {
+            color: #8338ec;
+        }
+        
+        #location-indicator {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-family: 'Orbitron', sans-serif;
+            font-size: 2.5rem;
+            font-weight: 700;
+            letter-spacing: 8px;
+            text-transform: uppercase;
+            background: linear-gradient(135deg, #ff006e, #8338ec);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            filter: drop-shadow(0 0 40px rgba(255, 0, 110, 0.8));
+            z-index: 100;
+            opacity: 0;
+            transition: opacity 0.5s ease;
+            pointer-events: none;
+        }
+        
+        #crosshair {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 30px;
+            height: 30px;
+            border: 2px solid rgba(131, 56, 236, 0.6);
+            border-radius: 50%;
+            z-index: 100;
+            pointer-events: none;
+        }
+        
+        #crosshair::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 6px;
+            height: 6px;
+            background: #8338ec;
+            border-radius: 50%;
+        }
+        
+        canvas {
+            display: block;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 0.6; }
+            50% { opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+    <div id="info">
+        <h1>NEON PULSE</h1>
+        <p>Live in Virtual Reality</p>
+    </div>
+    
+    <div id="venue-info">
+        <h2>🎸 TONIGHT</h2>
+        <div class="info-row">
+            <span class="info-label">Band</span>
+            <span class="info-value">Neon Pulse</span>
+        </div>
+        <div class="info-row">
+            <span class="info-label">Venue</span>
+            <span class="info-value">The Void Theatre</span>
+        </div>
+        <div class="info-row">
+            <span class="info-label">Your Seat</span>
+            <span class="info-value" id="current-seat">Dance Floor</span>
+        </div>
+    </div>
+    
+    <div id="location-indicator"></div>
+    <div id="crosshair"></div>
+    
+    <div id="controls-info">
+        <p><strong>VR:</strong> Point controller at seat & press trigger to teleport</p>
+        <p><strong>Desktop:</strong> Click on seats to sit | <strong>WASD:</strong> Walk (when standing)</p>
+        <p><strong>D:</strong> Dance floor | <strong>1-5:</strong> Jump to seat row | <strong>ESC:</strong> Stand up</p>
+    </div>
+    
+    <button id="vr-button">ENTER VR</button>
+    
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+            "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+        }
+    }
+    </script>
+    
+    <script type="module">
+        import * as THREE from 'three';
+        import { VRButton } from 'three/addons/webxr/VRButton.js';
+        import { XRControllerModelFactory } from 'three/addons/webxr/XRControllerModelFactory.js';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        
+        // Scene state
+        let scene, camera, renderer, controls;
+        let controller1, controller2, controllerGrip1, controllerGrip2;
+        let cameraRig;
+        let seats = [];
+        let interactiveObjects = [];
+        let bandMembers = [];
+        let dancers = [];
+        let stageLights = [];
+        let spotlights = [];
+        let laserBeams = [];
+        let fogPlanes = [];
+        let audioVisualizers = [];
+        let time = 0;
+        let beatTime = 0;
+        let currentSeat = 'Dance Floor';
+        
+        // Raycaster for interaction
+        const raycaster = new THREE.Raycaster();
+        const pointer = new THREE.Vector2();
+        let hoveredObject = null;
+        
+        // Click vs drag detection
+        let mouseDownPos = { x: 0, y: 0 };
+        let mouseDownTime = 0;
+        const CLICK_THRESHOLD = 10; // pixels - max movement to count as click
+        const CLICK_TIME_THRESHOLD = 300; // ms - max time to count as click
+        
+        // Seated state
+        let isSeated = false;
+        let seatedPosition = null;
+        let seatedLookTarget = new THREE.Vector3(0, 3, -25); // Stage center
+        
+        // Movement
+        const moveState = { forward: false, backward: false, left: false, right: false };
+        const moveSpeed = 5;
+        
+        // Colors
+        const NEON_PINK = 0xff006e;
+        const NEON_PURPLE = 0x8338ec;
+        const NEON_BLUE = 0x3a86ff;
+        const NEON_CYAN = 0x00f5d4;
+        const NEON_YELLOW = 0xffbe0b;
+        
+        init();
+        animate();
+        
+        function init() {
+            // Scene setup
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x0a0012);
+            scene.fog = new THREE.FogExp2(0x0a0012, 0.008);
+            
+            // Camera rig for VR locomotion
+            cameraRig = new THREE.Group();
+            scene.add(cameraRig);
+            
+            // Camera
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(0, 1.6, 20);
+            cameraRig.add(camera);
+            
+            // Renderer
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            renderer.xr.enabled = true;
+            renderer.toneMapping = THREE.ACESFilmicToneMapping;
+            renderer.toneMappingExposure = 1.5;
+            document.body.appendChild(renderer.domElement);
+            
+            // VR Button
+            const vrButton = document.getElementById('vr-button');
+            if ('xr' in navigator) {
+                navigator.xr.isSessionSupported('immersive-vr').then((supported) => {
+                    if (supported) {
+                        vrButton.addEventListener('click', () => {
+                            navigator.xr.requestSession('immersive-vr', {
+                                optionalFeatures: ['local-floor', 'bounded-floor', 'hand-tracking']
+                            }).then(onSessionStarted);
+                        });
+                    } else {
+                        vrButton.textContent = 'VR NOT SUPPORTED';
+                        vrButton.disabled = true;
+                    }
+                });
+            } else {
+                vrButton.textContent = 'WEBXR NOT AVAILABLE';
+                vrButton.disabled = true;
+            }
+            
+            // Orbit controls for non-VR
+            controls = new OrbitControls(camera, renderer.domElement);
+            controls.target.set(0, 2, -5);
+            controls.minPolarAngle = 0;
+            controls.maxPolarAngle = Math.PI / 1.8;
+            controls.minDistance = 2;
+            controls.maxDistance = 40;
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.08;
+            controls.rotateSpeed = 0.5;
+            controls.update();
+            
+            // Create environment
+            createTheatre();
+            createStage();
+            createBand();
+            createSeating();
+            createDanceFloor();
+            createDancers();
+            createLighting();
+            createAtmosphere();
+            createAudioVisualizers();
+            
+            // VR Controllers
+            setupVRControllers();
+            
+            // Event listeners
+            window.addEventListener('resize', onWindowResize);
+            document.addEventListener('keydown', onKeyDown);
+            document.addEventListener('keyup', onKeyUp);
+            document.addEventListener('mousedown', onMouseDown);
+            document.addEventListener('mouseup', onMouseUp);
+            document.addEventListener('mousemove', onMouseMove);
+        }
+        
+        function onSessionStarted(session) {
+            renderer.xr.setSession(session);
+            document.getElementById('vr-button').style.display = 'none';
+            document.getElementById('crosshair').style.display = 'none';
+        }
+        
+        function createTheatre() {
+            // Floor
+            const floorGeo = new THREE.PlaneGeometry(60, 80);
+            const floorMat = new THREE.MeshStandardMaterial({
+                color: 0x151518,
+                roughness: 0.8,
+                metalness: 0.2
+            });
+            const floor = new THREE.Mesh(floorGeo, floorMat);
+            floor.rotation.x = -Math.PI / 2;
+            floor.receiveShadow = true;
+            scene.add(floor);
+            
+            // Walls
+            const wallMat = new THREE.MeshStandardMaterial({
+                color: 0x252538,
+                roughness: 0.9,
+                metalness: 0.1
+            });
+            
+            // Back wall
+            const backWallGeo = new THREE.PlaneGeometry(60, 25);
+            const backWall = new THREE.Mesh(backWallGeo, wallMat);
+            backWall.position.set(0, 12.5, -40);
+            scene.add(backWall);
+            
+            // Side walls with acoustic panels
+            const sideWallGeo = new THREE.PlaneGeometry(80, 25);
+            
+            const leftWall = new THREE.Mesh(sideWallGeo, wallMat);
+            leftWall.position.set(-30, 12.5, 0);
+            leftWall.rotation.y = Math.PI / 2;
+            scene.add(leftWall);
+            
+            const rightWall = new THREE.Mesh(sideWallGeo, wallMat);
+            rightWall.position.set(30, 12.5, 0);
+            rightWall.rotation.y = -Math.PI / 2;
+            scene.add(rightWall);
+            
+            // Add acoustic panel decorations
+            for (let side = -1; side <= 1; side += 2) {
+                for (let i = 0; i < 8; i++) {
+                    const panelGeo = new THREE.BoxGeometry(0.3, 6, 3);
+                    const panelMat = new THREE.MeshStandardMaterial({
+                        color: new THREE.Color().setHSL(0.75 + i * 0.03, 0.6, 0.15),
+                        roughness: 0.7
+                    });
+                    const panel = new THREE.Mesh(panelGeo, panelMat);
+                    panel.position.set(side * 29.8, 8 + Math.sin(i) * 2, -30 + i * 7);
+                    scene.add(panel);
+                }
+            }
+            
+            // Ceiling with rigging structure
+            const ceilingGeo = new THREE.PlaneGeometry(60, 80);
+            const ceilingMat = new THREE.MeshStandardMaterial({
+                color: 0x151520,
+                roughness: 1,
+                metalness: 0
+            });
+            const ceiling = new THREE.Mesh(ceilingGeo, ceilingMat);
+            ceiling.rotation.x = Math.PI / 2;
+            ceiling.position.y = 20;
+            scene.add(ceiling);
+            
+            // Rigging truss
+            createTruss();
+        }
+        
+        function createTruss() {
+            const trussMat = new THREE.MeshStandardMaterial({
+                color: 0x222222,
+                metalness: 0.8,
+                roughness: 0.3
+            });
+            
+            // Main horizontal trusses
+            for (let z = -25; z <= 10; z += 10) {
+                const trussGeo = new THREE.BoxGeometry(50, 0.5, 0.5);
+                const truss = new THREE.Mesh(trussGeo, trussMat);
+                truss.position.set(0, 18, z);
+                scene.add(truss);
+                
+                // Vertical supports
+                for (let x = -20; x <= 20; x += 10) {
+                    const supportGeo = new THREE.BoxGeometry(0.3, 2, 0.3);
+                    const support = new THREE.Mesh(supportGeo, trussMat);
+                    support.position.set(x, 19, z);
+                    scene.add(support);
+                }
+            }
+        }
+        
+        function createStage() {
+            // Main stage platform
+            const stageGeo = new THREE.BoxGeometry(30, 1.5, 15);
+            const stageMat = new THREE.MeshStandardMaterial({
+                color: 0x1a1a1a,
+                roughness: 0.6,
+                metalness: 0.3
+            });
+            const stage = new THREE.Mesh(stageGeo, stageMat);
+            stage.position.set(0, 0.75, -25);
+            stage.receiveShadow = true;
+            stage.castShadow = true;
+            scene.add(stage);
+            
+            // Stage front edge with LED strip
+            const ledStripGeo = new THREE.BoxGeometry(30, 0.1, 0.3);
+            const ledStripMat = new THREE.MeshStandardMaterial({
+                color: NEON_PURPLE,
+                emissive: NEON_PURPLE,
+                emissiveIntensity: 2
+            });
+            const ledStrip = new THREE.Mesh(ledStripGeo, ledStripMat);
+            ledStrip.position.set(0, 1.55, -17.5);
+            scene.add(ledStrip);
+            stageLights.push({ mesh: ledStrip, baseColor: NEON_PURPLE });
+            
+            // Back screen/LED wall
+            const screenGeo = new THREE.PlaneGeometry(28, 10);
+            const screenMat = new THREE.MeshStandardMaterial({
+                color: 0x000000,
+                emissive: NEON_BLUE,
+                emissiveIntensity: 0.3
+            });
+            const screen = new THREE.Mesh(screenGeo, screenMat);
+            screen.position.set(0, 7, -32);
+            scene.add(screen);
+            stageLights.push({ mesh: screen, baseColor: NEON_BLUE, type: 'screen' });
+            
+            // Stage stairs
+            for (let i = 0; i < 3; i++) {
+                const stairGeo = new THREE.BoxGeometry(4, 0.5, 1);
+                const stairMat = new THREE.MeshStandardMaterial({
+                    color: 0x1a1a1a,
+                    roughness: 0.7
+                });
+                const stair = new THREE.Mesh(stairGeo, stairMat);
+                stair.position.set(0, 0.25 + i * 0.5, -17 + i * 1);
+                scene.add(stair);
+            }
+            
+            // Speaker stacks
+            createSpeakerStack(-14, -20);
+            createSpeakerStack(14, -20);
+        }
+        
+        function createSpeakerStack(x, z) {
+            const speakerGroup = new THREE.Group();
+            
+            for (let i = 0; i < 3; i++) {
+                const speakerGeo = new THREE.BoxGeometry(3, 2, 2);
+                const speakerMat = new THREE.MeshStandardMaterial({
+                    color: 0x1a1a1a,
+                    roughness: 0.5,
+                    metalness: 0.5
+                });
+                const speaker = new THREE.Mesh(speakerGeo, speakerMat);
+                speaker.position.y = 1.5 + i * 2.2;
+                speakerGroup.add(speaker);
+                
+                // Speaker cone
+                const coneGeo = new THREE.CircleGeometry(0.6, 32);
+                const coneMat = new THREE.MeshStandardMaterial({
+                    color: 0x333333,
+                    roughness: 0.3,
+                    metalness: 0.7
+                });
+                const cone = new THREE.Mesh(coneGeo, coneMat);
+                cone.position.set(0, 1.5 + i * 2.2, 1.01);
+                speakerGroup.add(cone);
+            }
+            
+            speakerGroup.position.set(x, 0, z);
+            scene.add(speakerGroup);
+        }
+        
+        function createBand() {
+            // Create band members
+            createBandMember(0, 'vocalist', 0, 1.5, -24);
+            createBandMember(1, 'guitarist', -5, 1.5, -26);
+            createBandMember(2, 'bassist', 5, 1.5, -26);
+            createBandMember(3, 'drummer', 0, 1.5, -29);
+            createBandMember(4, 'keyboardist', -8, 1.5, -28);
+            
+            // Create instruments
+            createDrumKit(0, 1.5, -29);
+            createKeyboard(-8, 2.2, -28);
+            createMicStand(0, 1.5, -24);
+            createMicStand(-5, 1.5, -26);
+            createMicStand(5, 1.5, -26);
+        }
+        
+        function createBandMember(index, role, x, y, z) {
+            const memberGroup = new THREE.Group();
+            
+            // Body
+            const bodyGeo = new THREE.CapsuleGeometry(0.3, 1, 8, 16);
+            const bodyMat = new THREE.MeshStandardMaterial({
+                color: [0x1a1a2e, 0x2d1b4e, 0x1b2e4e, 0x1e1e1e, 0x2e1b3e][index],
+                roughness: 0.7
+            });
+            const body = new THREE.Mesh(bodyGeo, bodyMat);
+            body.position.y = 0.8;
+            memberGroup.add(body);
+            
+            // Head
+            const headGeo = new THREE.SphereGeometry(0.2, 16, 16);
+            const headMat = new THREE.MeshStandardMaterial({
+                color: 0xd4a574,
+                roughness: 0.6
+            });
+            const head = new THREE.Mesh(headGeo, headMat);
+            head.position.y = 1.6;
+            memberGroup.add(head);
+            
+            // Hair
+            const hairGeo = new THREE.SphereGeometry(0.22, 16, 16);
+            const hairMat = new THREE.MeshStandardMaterial({
+                color: [0x1a1a1a, 0x4a3728, 0x8b4513, 0x1a1a1a, 0x2d1b4e][index],
+                roughness: 0.9
+            });
+            const hair = new THREE.Mesh(hairGeo, hairMat);
+            hair.position.y = 1.7;
+            hair.scale.set(1, 0.8, 1);
+            memberGroup.add(hair);
+            
+            memberGroup.position.set(x, y, z);
+            memberGroup.userData = { role, baseY: y, animOffset: Math.random() * Math.PI * 2 };
+            scene.add(memberGroup);
+            bandMembers.push(memberGroup);
+        }
+        
+        function createDrumKit(x, y, z) {
+            const drumGroup = new THREE.Group();
+            
+            // Bass drum
+            const bassGeo = new THREE.CylinderGeometry(0.6, 0.6, 0.5, 32);
+            const bassMat = new THREE.MeshStandardMaterial({
+                color: 0x1a1a2e,
+                roughness: 0.5,
+                metalness: 0.3
+            });
+            const bass = new THREE.Mesh(bassGeo, bassMat);
+            bass.rotation.x = Math.PI / 2;
+            bass.position.set(0, 0.3, 0);
+            drumGroup.add(bass);
+            
+            // Snare
+            const snareGeo = new THREE.CylinderGeometry(0.25, 0.25, 0.15, 32);
+            const snareMat = new THREE.MeshStandardMaterial({
+                color: 0xc0c0c0,
+                metalness: 0.8,
+                roughness: 0.2
+            });
+            const snare = new THREE.Mesh(snareGeo, snareMat);
+            snare.position.set(-0.5, 0.7, 0.5);
+            drumGroup.add(snare);
+            
+            // Hi-hat
+            const hihatGeo = new THREE.CylinderGeometry(0.2, 0.2, 0.02, 32);
+            const hihatMat = new THREE.MeshStandardMaterial({
+                color: 0xffd700,
+                metalness: 0.9,
+                roughness: 0.1
+            });
+            const hihat = new THREE.Mesh(hihatGeo, hihatMat);
+            hihat.position.set(-0.8, 1, 0.3);
+            drumGroup.add(hihat);
+            
+            // Cymbals
+            for (let i = 0; i < 3; i++) {
+                const cymbalGeo = new THREE.CylinderGeometry(0.25, 0.25, 0.02, 32);
+                const cymbal = new THREE.Mesh(cymbalGeo, hihatMat);
+                cymbal.position.set(
+                    [-0.6, 0.6, 0][i],
+                    1.2,
+                    [-0.3, -0.3, 0.6][i]
+                );
+                drumGroup.add(cymbal);
+            }
+            
+            // Drum stool
+            const stoolGeo = new THREE.CylinderGeometry(0.2, 0.15, 0.6, 16);
+            const stoolMat = new THREE.MeshStandardMaterial({ color: 0x1a1a1a });
+            const stool = new THREE.Mesh(stoolGeo, stoolMat);
+            stool.position.set(0, 0.3, 1);
+            drumGroup.add(stool);
+            
+            drumGroup.position.set(x, y, z);
+            scene.add(drumGroup);
+        }
+        
+        function createKeyboard(x, y, z) {
+            const kbGroup = new THREE.Group();
+            
+            // Keyboard body
+            const bodyGeo = new THREE.BoxGeometry(1.5, 0.1, 0.4);
+            const bodyMat = new THREE.MeshStandardMaterial({
+                color: 0x1a1a1a,
+                roughness: 0.3,
+                metalness: 0.5
+            });
+            const body = new THREE.Mesh(bodyGeo, bodyMat);
+            kbGroup.add(body);
+            
+            // Keys
+            for (let i = 0; i < 24; i++) {
+                const isBlack = [1, 3, 6, 8, 10].includes(i % 12);
+                const keyGeo = new THREE.BoxGeometry(isBlack ? 0.03 : 0.05, isBlack ? 0.02 : 0.01, isBlack ? 0.2 : 0.35);
+                const keyMat = new THREE.MeshStandardMaterial({
+                    color: isBlack ? 0x1a1a1a : 0xffffff
+                });
+                const key = new THREE.Mesh(keyGeo, keyMat);
+                key.position.set(-0.7 + i * 0.06, isBlack ? 0.06 : 0.05, isBlack ? -0.05 : 0);
+                kbGroup.add(key);
+            }
+            
+            // Stand
+            const standGeo = new THREE.BoxGeometry(0.05, 1, 0.05);
+            const standMat = new THREE.MeshStandardMaterial({ color: 0x333333 });
+            for (let i = -1; i <= 1; i += 2) {
+                const stand = new THREE.Mesh(standGeo, standMat);
+                stand.position.set(i * 0.6, -0.5, 0);
+                kbGroup.add(stand);
+            }
+            
+            kbGroup.position.set(x, y, z);
+            scene.add(kbGroup);
+        }
+        
+        function createMicStand(x, y, z) {
+            const micGroup = new THREE.Group();
+            
+            // Stand
+            const standGeo = new THREE.CylinderGeometry(0.02, 0.03, 1.5, 8);
+            const standMat = new THREE.MeshStandardMaterial({
+                color: 0x333333,
+                metalness: 0.7,
+                roughness: 0.3
+            });
+            const stand = new THREE.Mesh(standGeo, standMat);
+            stand.position.y = 0.75;
+            micGroup.add(stand);
+            
+            // Base
+            const baseGeo = new THREE.CylinderGeometry(0.2, 0.2, 0.05, 16);
+            const base = new THREE.Mesh(baseGeo, standMat);
+            micGroup.add(base);
+            
+            // Mic
+            const micGeo = new THREE.CapsuleGeometry(0.03, 0.08, 8, 8);
+            const micMat = new THREE.MeshStandardMaterial({
+                color: 0x1a1a1a,
+                metalness: 0.5,
+                roughness: 0.3
+            });
+            const mic = new THREE.Mesh(micGeo, micMat);
+            mic.position.y = 1.55;
+            mic.rotation.x = Math.PI / 6;
+            micGroup.add(mic);
+            
+            // Mic grille
+            const grilleGeo = new THREE.SphereGeometry(0.035, 16, 16);
+            const grilleMat = new THREE.MeshStandardMaterial({
+                color: 0x666666,
+                metalness: 0.9,
+                roughness: 0.1
+            });
+            const grille = new THREE.Mesh(grilleGeo, grilleMat);
+            grille.position.y = 1.6;
+            micGroup.add(grille);
+            
+            micGroup.position.set(x, y, z);
+            scene.add(micGroup);
+        }
+        
+        function createSeating() {
+            const seatColors = [NEON_PINK, NEON_PURPLE, NEON_BLUE, NEON_CYAN, NEON_YELLOW];
+            
+            // Create rows of seats - positioned closer due to smaller dance floor
+            for (let row = 0; row < 5; row++) {
+                const rowZ = -4 + row * 3.5;  // Start closer, slightly tighter rows
+                const rowY = 0.5 + row * 0.7;
+                const seatsInRow = 10 + row * 2;
+                const rowWidth = seatsInRow * 1.4;
+                
+                // Row platform (tiered)
+                const platformGeo = new THREE.BoxGeometry(rowWidth + 2, row * 0.7 + 0.5, 2.5);
+                const platformMat = new THREE.MeshStandardMaterial({
+                    color: 0x1a1a1a,
+                    roughness: 0.8
+                });
+                const platform = new THREE.Mesh(platformGeo, platformMat);
+                platform.position.set(0, (row * 0.7) / 2, rowZ);
+                platform.receiveShadow = true;
+                scene.add(platform);
+                
+                // Create seats in row
+                for (let i = 0; i < seatsInRow; i++) {
+                    const x = -rowWidth / 2 + 0.7 + i * 1.4;
+                    createSeat(x, rowY, rowZ, row, i, seatColors[row]);
+                }
+            }
+        }
+        
+        function createSeat(x, y, z, row, index, accentColor) {
+            const seatGroup = new THREE.Group();
+            
+            // Seat base
+            const baseGeo = new THREE.BoxGeometry(0.6, 0.1, 0.6);
+            const baseMat = new THREE.MeshStandardMaterial({
+                color: 0x2a2a2a,
+                roughness: 0.6,
+                metalness: 0.3
+            });
+            const base = new THREE.Mesh(baseGeo, baseMat);
+            base.position.y = 0.45;
+            seatGroup.add(base);
+            
+            // Seat cushion
+            const cushionGeo = new THREE.BoxGeometry(0.5, 0.15, 0.5);
+            const cushionMat = new THREE.MeshStandardMaterial({
+                color: 0x4a1a4a,
+                roughness: 0.8
+            });
+            const cushion = new THREE.Mesh(cushionGeo, cushionMat);
+            cushion.position.y = 0.58;
+            seatGroup.add(cushion);
+            
+            // Seat back
+            const backGeo = new THREE.BoxGeometry(0.5, 0.6, 0.1);
+            const backMat = new THREE.MeshStandardMaterial({
+                color: 0x4a1a4a,
+                roughness: 0.8
+            });
+            const back = new THREE.Mesh(backGeo, backMat);
+            back.position.set(0, 0.85, -0.25);
+            seatGroup.add(back);
+            
+            // Armrests
+            const armGeo = new THREE.BoxGeometry(0.08, 0.3, 0.4);
+            const armMat = new THREE.MeshStandardMaterial({
+                color: 0x1a1a1a,
+                metalness: 0.5,
+                roughness: 0.3
+            });
+            
+            const leftArm = new THREE.Mesh(armGeo, armMat);
+            leftArm.position.set(-0.3, 0.65, 0);
+            seatGroup.add(leftArm);
+            
+            const rightArm = new THREE.Mesh(armGeo, armMat);
+            rightArm.position.set(0.3, 0.65, 0);
+            seatGroup.add(rightArm);
+            
+            // Accent LED strip on seat
+            const ledGeo = new THREE.BoxGeometry(0.52, 0.02, 0.02);
+            const ledMat = new THREE.MeshStandardMaterial({
+                color: accentColor,
+                emissive: accentColor,
+                emissiveIntensity: 0.5
+            });
+            const led = new THREE.Mesh(ledGeo, ledMat);
+            led.position.set(0, 0.52, 0.3);
+            seatGroup.add(led);
+            
+            // Invisible interaction mesh (larger hitbox)
+            const hitboxGeo = new THREE.BoxGeometry(1, 1.5, 1);
+            const hitboxMat = new THREE.MeshBasicMaterial({
+                visible: false
+            });
+            const hitbox = new THREE.Mesh(hitboxGeo, hitboxMat);
+            hitbox.position.y = 0.75;
+            seatGroup.add(hitbox);
+            
+            seatGroup.position.set(x, y, z);
+            // Rotate seat to face the stage (negative Z direction)
+            seatGroup.rotation.y = Math.PI;
+            seatGroup.userData = {
+                type: 'seat',
+                row: row + 1,
+                index: index + 1,
+                viewPosition: new THREE.Vector3(x, y + 1.6, z - 0.5),
+                accentColor,
+                ledMesh: led,
+                baseLedIntensity: 0.5
+            };
+            
+            scene.add(seatGroup);
+            seats.push(seatGroup);
+            interactiveObjects.push(hitbox);
+            hitbox.userData.parent = seatGroup;
+        }
+        
+        function createDanceFloor() {
+            // Main dance floor - narrower depth to bring stage closer to seats
+            const floorWidth = 18;
+            const floorDepth = 10;
+            const tileCountX = 9;
+            const tileCountZ = 5;
+            const tileSizeX = floorWidth / tileCountX;
+            const tileSizeZ = floorDepth / tileCountZ;
+            
+            const danceFloorGroup = new THREE.Group();
+            
+            for (let i = 0; i < tileCountX; i++) {
+                for (let j = 0; j < tileCountZ; j++) {
+                    const tileGeo = new THREE.BoxGeometry(tileSizeX - 0.1, 0.1, tileSizeZ - 0.1);
+                    const colorIndex = (i + j) % 5;
+                    const colors = [NEON_PINK, NEON_PURPLE, NEON_BLUE, NEON_CYAN, NEON_YELLOW];
+                    
+                    const tileMat = new THREE.MeshStandardMaterial({
+                        color: 0x1a1a1a,
+                        emissive: colors[colorIndex],
+                        emissiveIntensity: 0.1,
+                        roughness: 0.3,
+                        metalness: 0.5
+                    });
+                    
+                    const tile = new THREE.Mesh(tileGeo, tileMat);
+                    tile.position.set(
+                        -floorWidth / 2 + tileSizeX / 2 + i * tileSizeX,
+                        0.05,
+                        -floorDepth / 2 + tileSizeZ / 2 + j * tileSizeZ
+                    );
+                    tile.receiveShadow = true;
+                    danceFloorGroup.add(tile);
+                    
+                    stageLights.push({
+                        mesh: tile,
+                        baseColor: colors[colorIndex],
+                        type: 'floor',
+                        gridPos: { x: i, y: j }
+                    });
+                }
+            }
+            
+            // Position dance floor closer to stage
+            danceFloorGroup.position.set(0, 0, -12);
+            scene.add(danceFloorGroup);
+            
+            // Dance floor boundary with LED strips
+            const borderGeo = new THREE.BoxGeometry(floorWidth + 0.5, 0.05, 0.3);
+            const borderMat = new THREE.MeshStandardMaterial({
+                color: NEON_PURPLE,
+                emissive: NEON_PURPLE,
+                emissiveIntensity: 1
+            });
+            
+            const frontBorder = new THREE.Mesh(borderGeo, borderMat);
+            frontBorder.position.set(0, 0.1, -12 + floorDepth / 2 + 0.15);
+            scene.add(frontBorder);
+            
+            const backBorder = new THREE.Mesh(borderGeo, borderMat);
+            backBorder.position.set(0, 0.1, -12 - floorDepth / 2 - 0.15);
+            scene.add(backBorder);
+            
+            const sideBorderGeo = new THREE.BoxGeometry(0.3, 0.05, floorDepth + 0.5);
+            
+            const leftBorder = new THREE.Mesh(sideBorderGeo, borderMat);
+            leftBorder.position.set(-floorWidth / 2 - 0.15, 0.1, -12);
+            scene.add(leftBorder);
+            
+            const rightBorder = new THREE.Mesh(sideBorderGeo, borderMat);
+            rightBorder.position.set(floorWidth / 2 + 0.15, 0.1, -12);
+            scene.add(rightBorder);
+            
+            // Add dance floor as interactive area
+            const danceHitbox = new THREE.Mesh(
+                new THREE.BoxGeometry(floorWidth, 0.5, floorDepth),
+                new THREE.MeshBasicMaterial({ visible: false })
+            );
+            danceHitbox.position.set(0, 0.25, -12);
+            danceHitbox.userData = {
+                type: 'dancefloor',
+                viewPosition: new THREE.Vector3(0, 1.6, -9)
+            };
+            scene.add(danceHitbox);
+            interactiveObjects.push(danceHitbox);
+        }
+        
+        function createDancers() {
+            // Create dancing figures on the dance floor - positioned for smaller floor
+            const dancerPositions = [
+                { x: -6, z: -13 },
+                { x: -3, z: -10 },
+                { x: 0, z: -14 },
+                { x: 3, z: -11 },
+                { x: 6, z: -13 },
+                { x: -5, z: -11 },
+                { x: 2, z: -13 },
+                { x: 5, z: -10 },
+                { x: -2, z: -12 },
+                { x: 4, z: -14 },
+                { x: -7, z: -12 },
+                { x: 7, z: -11 }
+            ];
+            
+            const outfitColors = [
+                { top: 0xff006e, bottom: 0x1a1a2e },
+                { top: 0x8338ec, bottom: 0x0a0a15 },
+                { top: 0x3a86ff, bottom: 0x1a1a2e },
+                { top: 0x00f5d4, bottom: 0x0a0a15 },
+                { top: 0xffbe0b, bottom: 0x1a1a2e },
+                { top: 0xff5733, bottom: 0x0a0a15 },
+                { top: 0xffffff, bottom: 0x1a1a2e },
+                { top: 0x33fff5, bottom: 0x0a0a15 },
+                { top: 0xff33a8, bottom: 0x1a1a2e },
+                { top: 0x5733ff, bottom: 0x0a0a15 },
+                { top: 0x00ff88, bottom: 0x1a1a2e },
+                { top: 0xff8800, bottom: 0x0a0a15 }
+            ];
+            
+            dancerPositions.forEach((pos, i) => {
+                createDancer(pos.x, 0, pos.z, outfitColors[i % outfitColors.length], i);
+            });
+        }
+        
+        function createDancer(x, y, z, outfit, index) {
+            const dancerGroup = new THREE.Group();
+            
+            // More realistic body proportions
+            const skinTones = [0xf5d0c5, 0xd4a574, 0xc68642, 0x8d5524, 0xf1c27d, 0xe0ac69, 0xa0522d];
+            const skinTone = skinTones[index % skinTones.length];
+            const isFemale = index % 2 === 0;
+            
+            // Hips/Pelvis (pivot point for legs)
+            const hipsGeo = new THREE.SphereGeometry(isFemale ? 0.18 : 0.15, 12, 8);
+            const hipsMat = new THREE.MeshStandardMaterial({ color: outfit.bottom, roughness: 0.8 });
+            const hips = new THREE.Mesh(hipsGeo, hipsMat);
+            hips.position.y = 0.95;
+            hips.scale.set(1, 0.6, 0.8);
+            hips.name = 'hips';
+            dancerGroup.add(hips);
+            
+            // Torso
+            const torsoGeo = new THREE.CapsuleGeometry(isFemale ? 0.14 : 0.16, 0.35, 8, 12);
+            const torsoMat = new THREE.MeshStandardMaterial({
+                color: outfit.top,
+                roughness: 0.6,
+                emissive: outfit.top,
+                emissiveIntensity: 0.05
+            });
+            const torso = new THREE.Mesh(torsoGeo, torsoMat);
+            torso.position.y = 1.25;
+            torso.name = 'torso';
+            dancerGroup.add(torso);
+            
+            // Shoulders
+            const shoulderGeo = new THREE.SphereGeometry(isFemale ? 0.16 : 0.2, 12, 8);
+            const shoulderMat = new THREE.MeshStandardMaterial({ color: outfit.top, roughness: 0.6 });
+            const shoulders = new THREE.Mesh(shoulderGeo, shoulderMat);
+            shoulders.position.y = 1.45;
+            shoulders.scale.set(1.3, 0.4, 0.7);
+            shoulders.name = 'shoulders';
+            dancerGroup.add(shoulders);
+            
+            // Neck
+            const neckGeo = new THREE.CylinderGeometry(0.05, 0.06, 0.1, 8);
+            const neckMat = new THREE.MeshStandardMaterial({ color: skinTone, roughness: 0.7 });
+            const neck = new THREE.Mesh(neckGeo, neckMat);
+            neck.position.y = 1.55;
+            neck.name = 'neck';
+            dancerGroup.add(neck);
+            
+            // Head
+            const headGeo = new THREE.SphereGeometry(0.12, 16, 16);
+            const headMat = new THREE.MeshStandardMaterial({ color: skinTone, roughness: 0.7 });
+            const head = new THREE.Mesh(headGeo, headMat);
+            head.position.y = 1.7;
+            head.scale.set(1, 1.1, 1);
+            head.name = 'head';
+            dancerGroup.add(head);
+            
+            // Hair
+            const hairColors = [0x1a1a1a, 0x2a1a0a, 0x4a3728, 0x8b4513, 0xdaa520, 0xa52a2a, 0x800000];
+            const hairColor = hairColors[index % hairColors.length];
+            const hairMat = new THREE.MeshStandardMaterial({ color: hairColor, roughness: 0.9 });
+            
+            const hairGeo = isFemale ? 
+                new THREE.SphereGeometry(0.14, 12, 12) :
+                new THREE.SphereGeometry(0.13, 12, 8);
+            const hair = new THREE.Mesh(hairGeo, hairMat);
+            hair.position.y = isFemale ? 1.75 : 1.78;
+            hair.scale.set(1, isFemale ? 1.1 : 0.7, 1);
+            hair.name = 'hair';
+            dancerGroup.add(hair);
+            
+            // Upper Arms
+            const upperArmGeo = new THREE.CapsuleGeometry(0.04, 0.22, 6, 8);
+            const armMat = new THREE.MeshStandardMaterial({ color: skinTone, roughness: 0.7 });
+            
+            const leftUpperArm = new THREE.Mesh(upperArmGeo, armMat);
+            leftUpperArm.position.set(-0.22, 1.35, 0);
+            leftUpperArm.name = 'leftUpperArm';
+            dancerGroup.add(leftUpperArm);
+            
+            const rightUpperArm = new THREE.Mesh(upperArmGeo, armMat);
+            rightUpperArm.position.set(0.22, 1.35, 0);
+            rightUpperArm.name = 'rightUpperArm';
+            dancerGroup.add(rightUpperArm);
+            
+            // Lower Arms / Forearms
+            const lowerArmGeo = new THREE.CapsuleGeometry(0.035, 0.2, 6, 8);
+            
+            const leftLowerArm = new THREE.Mesh(lowerArmGeo, armMat);
+            leftLowerArm.position.set(-0.25, 1.1, 0);
+            leftLowerArm.name = 'leftLowerArm';
+            dancerGroup.add(leftLowerArm);
+            
+            const rightLowerArm = new THREE.Mesh(lowerArmGeo, armMat);
+            rightLowerArm.position.set(0.25, 1.1, 0);
+            rightLowerArm.name = 'rightLowerArm';
+            dancerGroup.add(rightLowerArm);
+            
+            // Hands
+            const handGeo = new THREE.SphereGeometry(0.04, 8, 8);
+            const leftHand = new THREE.Mesh(handGeo, armMat);
+            leftHand.position.set(-0.28, 0.95, 0);
+            leftHand.name = 'leftHand';
+            dancerGroup.add(leftHand);
+            
+            const rightHand = new THREE.Mesh(handGeo, armMat);
+            rightHand.position.set(0.28, 0.95, 0);
+            rightHand.name = 'rightHand';
+            dancerGroup.add(rightHand);
+            
+            // Upper Legs / Thighs
+            const thighGeo = new THREE.CapsuleGeometry(isFemale ? 0.07 : 0.065, 0.3, 6, 8);
+            const legMat = new THREE.MeshStandardMaterial({ color: outfit.bottom, roughness: 0.8 });
+            
+            const leftThigh = new THREE.Mesh(thighGeo, legMat);
+            leftThigh.position.set(-0.1, 0.65, 0);
+            leftThigh.name = 'leftThigh';
+            dancerGroup.add(leftThigh);
+            
+            const rightThigh = new THREE.Mesh(thighGeo, legMat);
+            rightThigh.position.set(0.1, 0.65, 0);
+            rightThigh.name = 'rightThigh';
+            dancerGroup.add(rightThigh);
+            
+            // Lower Legs / Calves
+            const calfGeo = new THREE.CapsuleGeometry(0.05, 0.3, 6, 8);
+            
+            const leftCalf = new THREE.Mesh(calfGeo, legMat);
+            leftCalf.position.set(-0.1, 0.28, 0);
+            leftCalf.name = 'leftCalf';
+            dancerGroup.add(leftCalf);
+            
+            const rightCalf = new THREE.Mesh(calfGeo, legMat);
+            rightCalf.position.set(0.1, 0.28, 0);
+            rightCalf.name = 'rightCalf';
+            dancerGroup.add(rightCalf);
+            
+            // Feet
+            const footGeo = new THREE.BoxGeometry(0.06, 0.04, 0.12);
+            const footMat = new THREE.MeshStandardMaterial({ color: 0x1a1a1a, roughness: 0.6 });
+            
+            const leftFoot = new THREE.Mesh(footGeo, footMat);
+            leftFoot.position.set(-0.1, 0.02, 0.02);
+            leftFoot.name = 'leftFoot';
+            dancerGroup.add(leftFoot);
+            
+            const rightFoot = new THREE.Mesh(footGeo, footMat);
+            rightFoot.position.set(0.1, 0.02, 0.02);
+            rightFoot.name = 'rightFoot';
+            dancerGroup.add(rightFoot);
+            
+            dancerGroup.position.set(x, y, z);
+            dancerGroup.userData = {
+                baseX: x,
+                baseY: y,
+                baseZ: z,
+                animOffset: Math.random() * Math.PI * 2,
+                danceStyle: index % 6, // More dance styles
+                speed: 0.9 + Math.random() * 0.3,
+                isFemale: isFemale,
+                facing: Math.random() * Math.PI * 0.5 - Math.PI * 0.25 // Slight random facing toward stage
+            };
+            
+            // Initial facing direction
+            dancerGroup.rotation.y = dancerGroup.userData.facing;
+            
+            scene.add(dancerGroup);
+            dancers.push(dancerGroup);
+        }
+        
+        function createLighting() {
+            // Ambient light (brighter for better visibility)
+            const ambient = new THREE.AmbientLight(0x4a4a6e, 0.8);
+            scene.add(ambient);
+            
+            // Hemisphere light for natural fill
+            const hemiLight = new THREE.HemisphereLight(0x6666aa, 0x222244, 0.6);
+            scene.add(hemiLight);
+            
+            // General room fill lights
+            const fillLight1 = new THREE.PointLight(0x8866aa, 100, 50);
+            fillLight1.position.set(-15, 12, 0);
+            scene.add(fillLight1);
+            
+            const fillLight2 = new THREE.PointLight(0x6688aa, 100, 50);
+            fillLight2.position.set(15, 12, 0);
+            scene.add(fillLight2);
+            
+            const fillLight3 = new THREE.PointLight(0x8888aa, 80, 40);
+            fillLight3.position.set(0, 10, 15);
+            scene.add(fillLight3);
+            
+            // Main stage wash lights
+            const stageWash = new THREE.SpotLight(NEON_PURPLE, 80);
+            stageWash.position.set(0, 15, -20);
+            stageWash.target.position.set(0, 1.5, -25);
+            stageWash.angle = Math.PI / 4;
+            stageWash.penumbra = 0.5;
+            stageWash.castShadow = true;
+            scene.add(stageWash);
+            scene.add(stageWash.target);
+            spotlights.push({ light: stageWash, baseColor: NEON_PURPLE, type: 'stage' });
+            
+            // Fixed rotating spotlights - each rotates around its own position
+            const spotPositions = [
+                { x: -12, z: -15 },
+                { x: 12, z: -15 },
+                { x: -8, z: 0 },
+                { x: 8, z: 0 },
+                { x: 0, z: 10 }
+            ];
+            
+            const spotColors = [NEON_PINK, NEON_BLUE, NEON_CYAN, NEON_YELLOW, NEON_PURPLE];
+            
+            spotPositions.forEach((pos, i) => {
+                // Create a pivot group for each spotlight to rotate around
+                const spotPivot = new THREE.Group();
+                spotPivot.position.set(pos.x, 18, pos.z);
+                scene.add(spotPivot);
+                
+                const spot = new THREE.SpotLight(spotColors[i], 100);
+                spot.position.set(0, 0, 0);
+                spot.angle = Math.PI / 10;
+                spot.penumbra = 0.4;
+                spot.castShadow = true;
+                spot.shadow.mapSize.width = 512;
+                spot.shadow.mapSize.height = 512;
+                spotPivot.add(spot);
+                
+                // Target positioned below and offset for rotation effect
+                const target = new THREE.Object3D();
+                target.position.set(0, -15, 5);
+                spotPivot.add(target);
+                spot.target = target;
+                
+                // Visible light housing
+                const housingGeo = new THREE.CylinderGeometry(0.3, 0.4, 0.5, 16);
+                const housingMat = new THREE.MeshStandardMaterial({
+                    color: 0x222222,
+                    metalness: 0.8,
+                    roughness: 0.2
+                });
+                const housing = new THREE.Mesh(housingGeo, housingMat);
+                housing.position.set(pos.x, 18.25, pos.z);
+                scene.add(housing);
+                
+                // Light beam cone (visible beam effect) - tip at housing, expands downward
+                const beamGeo = new THREE.ConeGeometry(3, 15, 16, 1, true);
+                const beamMat = new THREE.MeshBasicMaterial({
+                    color: spotColors[i],
+                    transparent: true,
+                    opacity: 0.08,
+                    side: THREE.DoubleSide,
+                    blending: THREE.AdditiveBlending,
+                    depthWrite: false
+                });
+                const beam = new THREE.Mesh(beamGeo, beamMat);
+                // Position so tip is at pivot (housing) and cone expands downward
+                beam.position.set(0, -7.5, 0);
+                // No rotation needed - cone tip is at top by default, which is what we want
+                spotPivot.add(beam);
+                
+                spotlights.push({
+                    light: spot,
+                    pivot: spotPivot,
+                    housing,
+                    beam,
+                    baseColor: spotColors[i],
+                    phase: i * Math.PI / 2.5,
+                    rotationSpeed: 0.3 + i * 0.1,
+                    rotationRadius: 0.3 + (i % 3) * 0.15,
+                    type: 'rotating'
+                });
+            });
+            
+            // Laser beams
+            createLasers();
+        }
+        
+        function createLasers() {
+            const laserColors = [NEON_PINK, NEON_PURPLE, NEON_BLUE, NEON_CYAN];
+            
+            for (let i = 0; i < 8; i++) {
+                const laserGeo = new THREE.CylinderGeometry(0.02, 0.02, 30, 8);
+                const laserMat = new THREE.MeshBasicMaterial({
+                    color: laserColors[i % laserColors.length],
+                    transparent: true,
+                    opacity: 0.6,
+                    blending: THREE.AdditiveBlending
+                });
+                const laser = new THREE.Mesh(laserGeo, laserMat);
+                
+                const side = i < 4 ? -1 : 1;
+                laser.position.set(side * 14, 15, -20);
+                laser.rotation.z = side * Math.PI / 4;
+                
+                scene.add(laser);
+                laserBeams.push({
+                    mesh: laser,
+                    baseRotationX: 0,
+                    baseRotationZ: laser.rotation.z,
+                    phase: i * Math.PI / 4,
+                    side
+                });
+            }
+        }
+        
+        function createAtmosphere() {
+            // Fog/haze planes for volumetric effect
+            for (let i = 0; i < 5; i++) {
+                const fogGeo = new THREE.PlaneGeometry(60, 20);
+                const fogMat = new THREE.MeshBasicMaterial({
+                    color: 0x8338ec,
+                    transparent: true,
+                    opacity: 0.02,
+                    side: THREE.DoubleSide,
+                    blending: THREE.AdditiveBlending,
+                    depthWrite: false
+                });
+                const fogPlane = new THREE.Mesh(fogGeo, fogMat);
+                fogPlane.position.set(0, 5 + i * 2, -10 - i * 3);
+                fogPlane.rotation.x = Math.PI / 12;
+                scene.add(fogPlane);
+                fogPlanes.push(fogPlane);
+            }
+            
+            // Particle system for atmosphere
+            createParticles();
+        }
+        
+        function createParticles() {
+            const particleCount = 500;
+            const geometry = new THREE.BufferGeometry();
+            const positions = new Float32Array(particleCount * 3);
+            const colors = new Float32Array(particleCount * 3);
+            
+            const colorOptions = [
+                new THREE.Color(NEON_PINK),
+                new THREE.Color(NEON_PURPLE),
+                new THREE.Color(NEON_BLUE),
+                new THREE.Color(NEON_CYAN)
+            ];
+            
+            for (let i = 0; i < particleCount; i++) {
+                positions[i * 3] = (Math.random() - 0.5) * 50;
+                positions[i * 3 + 1] = Math.random() * 18;
+                positions[i * 3 + 2] = (Math.random() - 0.5) * 60 - 10;
+                
+                const color = colorOptions[Math.floor(Math.random() * colorOptions.length)];
+                colors[i * 3] = color.r;
+                colors[i * 3 + 1] = color.g;
+                colors[i * 3 + 2] = color.b;
+            }
+            
+            geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+            
+            const material = new THREE.PointsMaterial({
+                size: 0.1,
+                vertexColors: true,
+                transparent: true,
+                opacity: 0.6,
+                blending: THREE.AdditiveBlending,
+                depthWrite: false
+            });
+            
+            const particles = new THREE.Points(geometry, material);
+            particles.userData = { positions };
+            scene.add(particles);
+        }
+        
+        function createAudioVisualizers() {
+            // EQ bars behind the band
+            const barCount = 32;
+            const barGroup = new THREE.Group();
+            
+            for (let i = 0; i < barCount; i++) {
+                const barGeo = new THREE.BoxGeometry(0.4, 1, 0.2);
+                const barMat = new THREE.MeshStandardMaterial({
+                    color: NEON_PURPLE,
+                    emissive: NEON_PURPLE,
+                    emissiveIntensity: 0.5
+                });
+                const bar = new THREE.Mesh(barGeo, barMat);
+                bar.position.x = -barCount * 0.25 + i * 0.5;
+                bar.position.y = 0.5;
+                barGroup.add(bar);
+                
+                audioVisualizers.push({
+                    mesh: bar,
+                    phase: i * 0.3,
+                    baseHeight: 1
+                });
+            }
+            
+            barGroup.position.set(0, 1.5, -31.5);
+            scene.add(barGroup);
+        }
+        
+        function setupVRControllers() {
+            const controllerModelFactory = new XRControllerModelFactory();
+            
+            // Controller 1
+            controller1 = renderer.xr.getController(0);
+            controller1.addEventListener('selectstart', onSelectStart);
+            controller1.addEventListener('selectend', onSelectEnd);
+            cameraRig.add(controller1);
+            
+            controllerGrip1 = renderer.xr.getControllerGrip(0);
+            controllerGrip1.add(controllerModelFactory.createControllerModel(controllerGrip1));
+            cameraRig.add(controllerGrip1);
+            
+            // Controller 2
+            controller2 = renderer.xr.getController(1);
+            controller2.addEventListener('selectstart', onSelectStart);
+            controller2.addEventListener('selectend', onSelectEnd);
+            cameraRig.add(controller2);
+            
+            controllerGrip2 = renderer.xr.getControllerGrip(1);
+            controllerGrip2.add(controllerModelFactory.createControllerModel(controllerGrip2));
+            cameraRig.add(controllerGrip2);
+            
+            // Add ray for aiming
+            const rayGeo = new THREE.BufferGeometry().setFromPoints([
+                new THREE.Vector3(0, 0, 0),
+                new THREE.Vector3(0, 0, -1)
+            ]);
+            const rayMat = new THREE.LineBasicMaterial({
+                color: NEON_PURPLE,
+                transparent: true,
+                opacity: 0.5
+            });
+            const ray = new THREE.Line(rayGeo, rayMat);
+            ray.scale.z = 10;
+            controller1.add(ray.clone());
+            controller2.add(ray.clone());
+        }
+        
+        function onSelectStart(event) {
+            const controller = event.target;
+            const tempMatrix = new THREE.Matrix4();
+            tempMatrix.identity().extractRotation(controller.matrixWorld);
+            
+            raycaster.ray.origin.setFromMatrixPosition(controller.matrixWorld);
+            raycaster.ray.direction.set(0, 0, -1).applyMatrix4(tempMatrix);
+            
+            const intersects = raycaster.intersectObjects(interactiveObjects);
+            
+            if (intersects.length > 0) {
+                const target = intersects[0].object;
+                teleportToTarget(target);
+            }
+        }
+        
+        function onSelectEnd(event) {
+            // Handle any select end logic
+        }
+        
+        function teleportToTarget(target) {
+            let viewPos;
+            let seatName;
+            let isSeatTarget = false;
+            
+            if (target.userData.parent) {
+                // It's a seat
+                const seatData = target.userData.parent.userData;
+                viewPos = seatData.viewPosition.clone();
+                seatName = `Row ${seatData.row}, Seat ${seatData.index}`;
+                isSeatTarget = true;
+            } else if (target.userData.type === 'dancefloor') {
+                viewPos = target.userData.viewPosition.clone();
+                seatName = 'Dance Floor';
+                isSeatTarget = false;
+            } else {
+                return;
+            }
+            
+            if (isSeatTarget) {
+                // Seated mode - position camera at seat height looking at stage
+                isSeated = true;
+                seatedPosition = viewPos.clone();
+                
+                // Set camera rig to seat position (floor level)
+                cameraRig.position.set(viewPos.x, 0, viewPos.z);
+                
+                // Position camera at seated eye level (slightly lower than standing)
+                const seatedEyeHeight = viewPos.y;
+                camera.position.set(0, seatedEyeHeight, 0);
+                
+                // Calculate look target at stage
+                const stageCenter = new THREE.Vector3(0, 3, -25);
+                
+                // Set orbit controls target just in front of seated position for head-turn effect
+                const lookDistance = 5;
+                const dirToStage = new THREE.Vector3().subVectors(stageCenter, new THREE.Vector3(viewPos.x, seatedEyeHeight, viewPos.z)).normalize();
+                const lookTarget = new THREE.Vector3(
+                    viewPos.x + dirToStage.x * lookDistance,
+                    seatedEyeHeight,
+                    viewPos.z + dirToStage.z * lookDistance
+                );
+                
+                controls.target.copy(lookTarget);
+                controls.minDistance = lookDistance - 0.5;
+                controls.maxDistance = lookDistance + 0.5;
+                controls.minPolarAngle = Math.PI / 3;    // Limit looking too far up
+                controls.maxPolarAngle = Math.PI / 1.6;  // Limit looking too far down
+                controls.minAzimuthAngle = -Math.PI / 2.5; // Limit left turn (about 72 degrees)
+                controls.maxAzimuthAngle = Math.PI / 2.5;  // Limit right turn
+                controls.enablePan = false;
+                controls.enableZoom = false;
+                controls.rotateSpeed = 0.3;
+                controls.update();
+                
+            } else {
+                // Dance floor mode - free movement
+                isSeated = false;
+                seatedPosition = null;
+                
+                // Reset camera rig and camera
+                cameraRig.position.set(viewPos.x, 0, viewPos.z);
+                camera.position.set(0, 1.6, 0);
+                
+                // Reset orbit controls for free movement
+                controls.target.set(viewPos.x, 2, viewPos.z - 5);
+                controls.minDistance = 2;
+                controls.maxDistance = 40;
+                controls.minPolarAngle = 0;
+                controls.maxPolarAngle = Math.PI / 1.8;
+                controls.minAzimuthAngle = -Infinity;
+                controls.maxAzimuthAngle = Infinity;
+                controls.enablePan = true;
+                controls.enableZoom = true;
+                controls.rotateSpeed = 0.5;
+                controls.update();
+            }
+            
+            currentSeat = seatName;
+            document.getElementById('current-seat').textContent = seatName;
+            showLocationIndicator(seatName);
+        }
+        
+        function showLocationIndicator(text) {
+            const indicator = document.getElementById('location-indicator');
+            indicator.textContent = text;
+            indicator.style.opacity = '1';
+            setTimeout(() => {
+                indicator.style.opacity = '0';
+            }, 1500);
+        }
+        
+        function onMouseDown(event) {
+            // Record mouse down position and time for click vs drag detection
+            mouseDownPos.x = event.clientX;
+            mouseDownPos.y = event.clientY;
+            mouseDownTime = Date.now();
+        }
+        
+        function onMouseUp(event) {
+            // Calculate how much the mouse moved and how long it was pressed
+            const dx = event.clientX - mouseDownPos.x;
+            const dy = event.clientY - mouseDownPos.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            const duration = Date.now() - mouseDownTime;
+            
+            // Only count as a click if movement was small and duration was short
+            if (distance < CLICK_THRESHOLD && duration < CLICK_TIME_THRESHOLD) {
+                pointer.x = (event.clientX / window.innerWidth) * 2 - 1;
+                pointer.y = -(event.clientY / window.innerHeight) * 2 + 1;
+                
+                raycaster.setFromCamera(pointer, camera);
+                const intersects = raycaster.intersectObjects(interactiveObjects);
+                
+                if (intersects.length > 0) {
+                    teleportToTarget(intersects[0].object);
+                }
+            }
+        }
+        
+        function onMouseMove(event) {
+            pointer.x = (event.clientX / window.innerWidth) * 2 - 1;
+            pointer.y = -(event.clientY / window.innerHeight) * 2 + 1;
+            
+            raycaster.setFromCamera(pointer, camera);
+            const intersects = raycaster.intersectObjects(interactiveObjects);
+            
+            // Reset previous hover
+            if (hoveredObject && hoveredObject.userData.parent) {
+                const seatData = hoveredObject.userData.parent.userData;
+                if (seatData.ledMesh) {
+                    seatData.ledMesh.material.emissiveIntensity = seatData.baseLedIntensity;
+                }
+            }
+            
+            if (intersects.length > 0) {
+                hoveredObject = intersects[0].object;
+                document.body.style.cursor = 'pointer';
+                
+                // Highlight seat
+                if (hoveredObject.userData.parent) {
+                    const seatData = hoveredObject.userData.parent.userData;
+                    if (seatData.ledMesh) {
+                        seatData.ledMesh.material.emissiveIntensity = 2;
+                    }
+                }
+            } else {
+                hoveredObject = null;
+                document.body.style.cursor = 'default';
+            }
+        }
+        
+        function onKeyDown(event) {
+            switch (event.key.toLowerCase()) {
+                case 'w': moveState.forward = true; break;
+                case 's': moveState.backward = true; break;
+                case 'a': moveState.left = true; break;
+                case 'd':
+                    if (!event.ctrlKey) {
+                        // Jump to dance floor
+                        const danceFloor = interactiveObjects.find(o => o.userData.type === 'dancefloor');
+                        if (danceFloor) teleportToTarget(danceFloor);
+                    } else {
+                        moveState.right = true;
+                    }
+                    break;
+                case '1':
+                case '2':
+                case '3':
+                case '4':
+                case '5':
+                    const rowNum = parseInt(event.key);
+                    const rowSeats = seats.filter(s => s.userData.row === rowNum);
+                    if (rowSeats.length > 0) {
+                        const middleSeat = rowSeats[Math.floor(rowSeats.length / 2)];
+                        const hitbox = middleSeat.children.find(c => !c.material.visible);
+                        if (hitbox) teleportToTarget(hitbox);
+                    }
+                    break;
+                case 'escape':
+                    // Stand up from seat
+                    if (isSeated) {
+                        standUp();
+                    }
+                    break;
+            }
+        }
+        
+        function standUp() {
+            if (!isSeated) return;
+            
+            isSeated = false;
+            seatedPosition = null;
+            
+            // Get current position and stand up nearby
+            const currentX = cameraRig.position.x;
+            const currentZ = cameraRig.position.z;
+            
+            // Move slightly forward (toward stage) from the seat
+            cameraRig.position.set(currentX, 0, currentZ - 1);
+            camera.position.set(0, 1.6, 0);
+            
+            // Reset orbit controls for free movement
+            controls.target.set(currentX, 2, currentZ - 6);
+            controls.minDistance = 2;
+            controls.maxDistance = 40;
+            controls.minPolarAngle = 0;
+            controls.maxPolarAngle = Math.PI / 1.8;
+            controls.minAzimuthAngle = -Infinity;
+            controls.maxAzimuthAngle = Infinity;
+            controls.enablePan = true;
+            controls.enableZoom = true;
+            controls.rotateSpeed = 0.5;
+            controls.update();
+            
+            currentSeat = 'Standing';
+            document.getElementById('current-seat').textContent = 'Standing';
+            showLocationIndicator('Standing');
+        }
+        
+        function onKeyUp(event) {
+            switch (event.key.toLowerCase()) {
+                case 'w': moveState.forward = false; break;
+                case 's': moveState.backward = false; break;
+                case 'a': moveState.left = false; break;
+                case 'd': moveState.right = false; break;
+            }
+        }
+        
+        function updateMovement(delta) {
+            if (renderer.xr.isPresenting) return;
+            
+            // Don't allow WASD movement when seated
+            if (isSeated) return;
+            
+            const direction = new THREE.Vector3();
+            const forward = new THREE.Vector3();
+            const right = new THREE.Vector3();
+            
+            camera.getWorldDirection(forward);
+            forward.y = 0;
+            forward.normalize();
+            
+            right.crossVectors(forward, new THREE.Vector3(0, 1, 0));
+            
+            if (moveState.forward) direction.add(forward);
+            if (moveState.backward) direction.sub(forward);
+            if (moveState.left) direction.sub(right);
+            if (moveState.right) direction.add(right);
+            
+            if (direction.length() > 0) {
+                direction.normalize();
+                camera.position.add(direction.multiplyScalar(moveSpeed * delta));
+                controls.target.add(direction.multiplyScalar(moveSpeed * delta));
+            }
+        }
+        
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+        
+        function updateLightShow(time) {
+            const beat = Math.sin(time * 4) * 0.5 + 0.5; // Simulated beat
+            const beatPulse = Math.pow(beat, 4);
+            
+            // Update stage lights
+            stageLights.forEach((light, i) => {
+                if (light.type === 'screen') {
+                    const hue = (time * 0.1 + i * 0.1) % 1;
+                    light.mesh.material.emissive.setHSL(hue, 0.8, 0.3);
+                    light.mesh.material.emissiveIntensity = 0.3 + beatPulse * 0.5;
+                } else if (light.type === 'floor') {
+                    const gridPhase = (light.gridPos.x + light.gridPos.y + time * 2) % 3;
+                    light.mesh.material.emissiveIntensity = 0.1 + (gridPhase < 1 ? 0.5 : 0) * beatPulse;
+                } else {
+                    light.mesh.material.emissiveIntensity = 1 + beatPulse * 2;
+                }
+            });
+            
+            // Update rotating spotlights - each rotates around its fixed position
+            spotlights.forEach((spot, i) => {
+                if (spot.type === 'rotating' && spot.pivot) {
+                    // Rotate the pivot around Y axis (circular motion)
+                    spot.pivot.rotation.y = time * spot.rotationSpeed + spot.phase;
+                    
+                    // Add some tilt variation
+                    spot.pivot.rotation.x = Math.sin(time * 0.5 + spot.phase) * spot.rotationRadius;
+                    spot.pivot.rotation.z = Math.cos(time * 0.7 + spot.phase) * spot.rotationRadius * 0.5;
+                    
+                    // Intensity pulse with beat
+                    spot.light.intensity = 80 + beatPulse * 50;
+                    
+                    // Color cycling
+                    const hue = (time * 0.08 + i * 0.15) % 1;
+                    spot.light.color.setHSL(hue, 0.9, 0.5);
+                    if (spot.beam) {
+                        spot.beam.material.color.setHSL(hue, 0.9, 0.5);
+                        spot.beam.material.opacity = 0.05 + beatPulse * 0.08;
+                    }
+                }
+            });
+            
+            // Update lasers
+            laserBeams.forEach((laser, i) => {
+                laser.mesh.rotation.x = Math.sin(time * 2 + laser.phase) * 0.5;
+                laser.mesh.rotation.z = laser.baseRotationZ + Math.sin(time * 1.5 + laser.phase) * 0.3;
+                laser.mesh.material.opacity = 0.3 + beatPulse * 0.4;
+            });
+            
+            // Update audio visualizers
+            audioVisualizers.forEach((viz, i) => {
+                const height = 0.5 + Math.abs(Math.sin(time * 3 + viz.phase)) * 3 * (0.5 + beatPulse * 0.5);
+                viz.mesh.scale.y = height;
+                viz.mesh.position.y = height / 2;
+                
+                const hue = (time * 0.1 + i * 0.03) % 1;
+                viz.mesh.material.emissive.setHSL(hue, 0.8, 0.4);
+            });
+            
+            // Update fog planes
+            fogPlanes.forEach((fog, i) => {
+                fog.material.opacity = 0.01 + beatPulse * 0.03;
+                fog.position.y = 5 + i * 2 + Math.sin(time * 0.5 + i) * 0.5;
+            });
+        }
+        
+        function updateBandAnimation(time) {
+            bandMembers.forEach((member, i) => {
+                const data = member.userData;
+                
+                // Bobbing motion
+                const bob = Math.sin(time * 3 + data.animOffset) * 0.1;
+                member.position.y = data.baseY + bob;
+                
+                // Swaying
+                member.rotation.y = Math.sin(time * 1.5 + data.animOffset) * 0.1;
+                member.rotation.z = Math.sin(time * 2 + data.animOffset) * 0.05;
+                
+                // Role-specific animations
+                if (data.role === 'vocalist') {
+                    member.rotation.x = Math.sin(time * 4) * 0.05;
+                } else if (data.role === 'guitarist' || data.role === 'bassist') {
+                    member.children[0].rotation.x = Math.sin(time * 6 + i) * 0.1;
+                } else if (data.role === 'drummer') {
+                    member.children[1].rotation.x = Math.sin(time * 8) * 0.1;
+                }
+            });
+        }
+        
+        function updateDancers(time) {
+            const beat = Math.sin(time * 4) * 0.5 + 0.5;
+            const beatPulse = Math.pow(beat, 3);
+            const strongBeat = Math.pow(Math.sin(time * 2) * 0.5 + 0.5, 2);
+            
+            dancers.forEach((dancer, i) => {
+                const data = dancer.userData;
+                const t = time * data.speed;
+                const offset = data.animOffset;
+                
+                // Get body parts
+                const hips = dancer.children.find(c => c.name === 'hips');
+                const torso = dancer.children.find(c => c.name === 'torso');
+                const shoulders = dancer.children.find(c => c.name === 'shoulders');
+                const neck = dancer.children.find(c => c.name === 'neck');
+                const head = dancer.children.find(c => c.name === 'head');
+                const leftUpperArm = dancer.children.find(c => c.name === 'leftUpperArm');
+                const rightUpperArm = dancer.children.find(c => c.name === 'rightUpperArm');
+                const leftLowerArm = dancer.children.find(c => c.name === 'leftLowerArm');
+                const rightLowerArm = dancer.children.find(c => c.name === 'rightLowerArm');
+                const leftHand = dancer.children.find(c => c.name === 'leftHand');
+                const rightHand = dancer.children.find(c => c.name === 'rightHand');
+                const leftThigh = dancer.children.find(c => c.name === 'leftThigh');
+                const rightThigh = dancer.children.find(c => c.name === 'rightThigh');
+                const leftCalf = dancer.children.find(c => c.name === 'leftCalf');
+                const rightCalf = dancer.children.find(c => c.name === 'rightCalf');
+                const leftFoot = dancer.children.find(c => c.name === 'leftFoot');
+                const rightFoot = dancer.children.find(c => c.name === 'rightFoot');
+                
+                // Base bounce that all dancers have
+                const bounce = Math.abs(Math.sin(t * 4 + offset)) * 0.08 * beatPulse;
+                dancer.position.y = data.baseY + bounce;
+                
+                // Different dance styles with realistic body mechanics
+                switch (data.danceStyle) {
+                    case 0: // Two-step groove
+                        // Hip sway
+                        if (hips) {
+                            hips.rotation.z = Math.sin(t * 4 + offset) * 0.12;
+                            hips.rotation.y = Math.sin(t * 2 + offset) * 0.1;
+                        }
+                        // Torso counter-rotation
+                        if (torso) {
+                            torso.rotation.z = -Math.sin(t * 4 + offset) * 0.08;
+                            torso.rotation.y = -Math.sin(t * 2 + offset) * 0.05;
+                        }
+                        // Shoulder groove
+                        if (shoulders) {
+                            shoulders.rotation.y = Math.sin(t * 4 + offset) * 0.15;
+                        }
+                        // Head bob
+                        if (head) {
+                            head.rotation.x = Math.sin(t * 4 + offset) * 0.1;
+                            head.rotation.y = Math.sin(t * 2 + offset) * 0.15;
+                        }
+                        // Arms swinging naturally
+                        if (leftUpperArm) {
+                            leftUpperArm.rotation.z = 0.2 + Math.sin(t * 4 + offset) * 0.25;
+                            leftUpperArm.rotation.x = Math.sin(t * 2 + offset) * 0.3;
+                        }
+                        if (rightUpperArm) {
+                            rightUpperArm.rotation.z = -0.2 - Math.sin(t * 4 + offset) * 0.25;
+                            rightUpperArm.rotation.x = -Math.sin(t * 2 + offset) * 0.3;
+                        }
+                        // Weight shift between legs
+                        if (leftThigh) leftThigh.rotation.x = Math.sin(t * 2 + offset) * 0.15;
+                        if (rightThigh) rightThigh.rotation.x = -Math.sin(t * 2 + offset) * 0.15;
+                        break;
+                        
+                    case 1: // Arms-up fist pump
+                        // Body bounce with hips
+                        if (hips) {
+                            hips.position.y = 0.95 - bounce * 0.5;
+                            hips.rotation.x = Math.sin(t * 4 + offset) * 0.05;
+                        }
+                        // Torso pumping
+                        if (torso) {
+                            torso.rotation.x = -0.1 + Math.sin(t * 4 + offset) * 0.08;
+                        }
+                        // Arms up pumping
+                        if (leftUpperArm) {
+                            leftUpperArm.rotation.z = 2.5 + Math.sin(t * 4 + offset) * 0.3;
+                            leftUpperArm.rotation.x = Math.sin(t * 2 + offset) * 0.2;
+                        }
+                        if (rightUpperArm) {
+                            rightUpperArm.rotation.z = -2.5 - Math.sin(t * 4 + offset + 0.5) * 0.3;
+                            rightUpperArm.rotation.x = Math.sin(t * 2 + offset + 0.5) * 0.2;
+                        }
+                        if (leftLowerArm) leftLowerArm.rotation.x = -0.8 + Math.sin(t * 4 + offset) * 0.4;
+                        if (rightLowerArm) rightLowerArm.rotation.x = -0.8 + Math.sin(t * 4 + offset + 0.5) * 0.4;
+                        // Head looking up slightly
+                        if (head) {
+                            head.rotation.x = -0.2 + Math.sin(t * 4 + offset) * 0.1;
+                        }
+                        // Knees bending with beat
+                        if (leftThigh) leftThigh.rotation.x = 0.1 + Math.sin(t * 4 + offset) * 0.1;
+                        if (rightThigh) rightThigh.rotation.x = 0.1 + Math.sin(t * 4 + offset) * 0.1;
+                        break;
+                        
+                    case 2: // Side-step shuffle
+                        // Lateral movement
+                        dancer.position.x = data.baseX + Math.sin(t * 2 + offset) * 0.3;
+                        // Hip shift
+                        if (hips) {
+                            hips.rotation.z = Math.sin(t * 2 + offset) * 0.2;
+                            hips.position.x = Math.sin(t * 2 + offset) * 0.05;
+                        }
+                        // Upper body counter-lean
+                        if (torso) {
+                            torso.rotation.z = -Math.sin(t * 2 + offset) * 0.15;
+                        }
+                        // Arms out for balance
+                        if (leftUpperArm) {
+                            leftUpperArm.rotation.z = 0.8 + Math.sin(t * 2 + offset) * 0.3;
+                        }
+                        if (rightUpperArm) {
+                            rightUpperArm.rotation.z = -0.8 - Math.sin(t * 2 + offset) * 0.3;
+                        }
+                        // Stepping legs
+                        if (leftThigh) {
+                            leftThigh.rotation.x = Math.max(0, Math.sin(t * 2 + offset)) * 0.3;
+                            leftThigh.rotation.z = Math.sin(t * 2 + offset) * 0.15;
+                        }
+                        if (rightThigh) {
+                            rightThigh.rotation.x = Math.max(0, -Math.sin(t * 2 + offset)) * 0.3;
+                            rightThigh.rotation.z = Math.sin(t * 2 + offset) * 0.15;
+                        }
+                        // Head looking direction of movement
+                        if (head) head.rotation.y = Math.sin(t * 2 + offset) * 0.25;
+                        break;
+                        
+                    case 3: // Head-nodding groove
+                        // Strong head nod
+                        if (head) {
+                            head.rotation.x = Math.sin(t * 4 + offset) * 0.25;
+                            head.rotation.z = Math.sin(t * 2 + offset) * 0.1;
+                        }
+                        if (neck) {
+                            neck.rotation.x = Math.sin(t * 4 + offset) * 0.1;
+                        }
+                        // Shoulders bouncing
+                        if (shoulders) {
+                            shoulders.position.y = 1.45 + Math.sin(t * 4 + offset) * 0.03;
+                        }
+                        // Subtle torso movement
+                        if (torso) {
+                            torso.rotation.z = Math.sin(t * 2 + offset) * 0.06;
+                        }
+                        // Arms relaxed with slight movement
+                        if (leftUpperArm) {
+                            leftUpperArm.rotation.z = 0.15;
+                            leftUpperArm.rotation.x = Math.sin(t * 4 + offset) * 0.2;
+                        }
+                        if (rightUpperArm) {
+                            rightUpperArm.rotation.z = -0.15;
+                            rightUpperArm.rotation.x = -Math.sin(t * 4 + offset) * 0.2;
+                        }
+                        // Slight knee bend with beat
+                        if (leftThigh) leftThigh.rotation.x = Math.abs(Math.sin(t * 4 + offset)) * 0.08;
+                        if (rightThigh) rightThigh.rotation.x = Math.abs(Math.sin(t * 4 + offset)) * 0.08;
+                        break;
+                        
+                    case 4: // Spinning/turning dance
+                        // Gradual rotation
+                        dancer.rotation.y = data.facing + Math.sin(t * 0.5 + offset) * 1.5;
+                        // Hips lead the turn
+                        if (hips) {
+                            hips.rotation.y = Math.sin(t * 0.5 + offset) * 0.2;
+                        }
+                        // Arms out during spins
+                        if (leftUpperArm) {
+                            leftUpperArm.rotation.z = 1.2 + Math.cos(t * 0.5 + offset) * 0.5;
+                        }
+                        if (rightUpperArm) {
+                            rightUpperArm.rotation.z = -1.2 - Math.cos(t * 0.5 + offset) * 0.5;
+                        }
+                        // Stepping feet
+                        if (leftThigh) leftThigh.rotation.x = Math.abs(Math.sin(t * 2 + offset)) * 0.2;
+                        if (rightThigh) rightThigh.rotation.x = Math.abs(Math.cos(t * 2 + offset)) * 0.2;
+                        // Head stays relatively forward
+                        if (head) head.rotation.y = -Math.sin(t * 0.5 + offset) * 0.3;
+                        break;
+                        
+                    case 5: // Jumping/bouncing
+                        // Big vertical bounce
+                        dancer.position.y = data.baseY + Math.abs(Math.sin(t * 3 + offset)) * 0.2 * strongBeat;
+                        // Knees bend on landing
+                        const jumpPhase = Math.sin(t * 3 + offset);
+                        if (leftThigh) {
+                            leftThigh.rotation.x = jumpPhase < 0 ? Math.abs(jumpPhase) * 0.4 : 0;
+                        }
+                        if (rightThigh) {
+                            rightThigh.rotation.x = jumpPhase < 0 ? Math.abs(jumpPhase) * 0.4 : 0;
+                        }
+                        if (leftCalf) leftCalf.rotation.x = jumpPhase < 0 ? Math.abs(jumpPhase) * 0.3 : 0;
+                        if (rightCalf) rightCalf.rotation.x = jumpPhase < 0 ? Math.abs(jumpPhase) * 0.3 : 0;
+                        // Arms pump with jumps
+                        if (leftUpperArm) {
+                            leftUpperArm.rotation.z = 0.5 + Math.sin(t * 3 + offset) * 0.8;
+                            leftUpperArm.rotation.x = Math.sin(t * 3 + offset) * 0.4;
+                        }
+                        if (rightUpperArm) {
+                            rightUpperArm.rotation.z = -0.5 - Math.sin(t * 3 + offset) * 0.8;
+                            rightUpperArm.rotation.x = Math.sin(t * 3 + offset) * 0.4;
+                        }
+                        // Head follows body momentum
+                        if (head) head.rotation.x = -Math.sin(t * 3 + offset) * 0.15;
+                        break;
+                }
+                
+                // Update hand positions to follow arms
+                if (leftHand && leftLowerArm) {
+                    leftHand.position.y = leftLowerArm.position.y - 0.15;
+                    leftHand.position.x = leftLowerArm.position.x - 0.03;
+                }
+                if (rightHand && rightLowerArm) {
+                    rightHand.position.y = rightLowerArm.position.y - 0.15;
+                    rightHand.position.x = rightLowerArm.position.x + 0.03;
+                }
+            });
+        }
+        
+        function animate() {
+            renderer.setAnimationLoop(render);
+        }
+        
+        function render(timestamp) {
+            const delta = Math.min(0.05, 1 / 60);
+            time = timestamp * 0.001;
+            beatTime += delta;
+            
+            // Update movement
+            updateMovement(delta);
+            
+            // Update light show
+            updateLightShow(time);
+            
+            // Update band
+            updateBandAnimation(time);
+            
+            // Update dancers on the dance floor
+            updateDancers(time);
+            
+            // Update controls
+            if (!renderer.xr.isPresenting) {
+                controls.update();
+            }
+            
+            renderer.render(scene, camera);
+        }
+    </script>
+</body>
+</html>
+
