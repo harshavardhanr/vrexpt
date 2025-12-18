@@ -896,7 +896,7 @@
                 for (let j = 0; j < tileCountZ; j++) {
                     const tileGeo = new THREE.BoxGeometry(tileSizeX - 0.1, 0.1, tileSizeZ - 0.1);
                     const colorIndex = (i + j) % 5;
-                    const colors = [NEON_PINK, NEON_PURPLE, NEON_BLUE, NEON_CYAN, NEON_YELLOW];
+                    const colors = [0xffffff, 0xcccccc, 0x999999, 0x666666, 0x444444];
                     
                     const tileMat = new THREE.MeshStandardMaterial({
                         color: 0x1a1a1a,
@@ -931,8 +931,8 @@
             // Dance floor boundary with LED strips
             const borderGeo = new THREE.BoxGeometry(floorWidth + 0.5, 0.05, 0.3);
             const borderMat = new THREE.MeshStandardMaterial({
-                color: NEON_PURPLE,
-                emissive: NEON_PURPLE,
+                color: 0xcccccc,
+                emissive: 0xcccccc,
                 emissiveIntensity: 1
             });
             
@@ -986,18 +986,18 @@
             ];
             
             const outfitColors = [
-                { top: 0xff006e, bottom: 0x1a1a2e },
-                { top: 0x8338ec, bottom: 0x0a0a15 },
-                { top: 0x3a86ff, bottom: 0x1a1a2e },
-                { top: 0x00f5d4, bottom: 0x0a0a15 },
-                { top: 0xffbe0b, bottom: 0x1a1a2e },
-                { top: 0xff5733, bottom: 0x0a0a15 },
-                { top: 0xffffff, bottom: 0x1a1a2e },
-                { top: 0x33fff5, bottom: 0x0a0a15 },
-                { top: 0xff33a8, bottom: 0x1a1a2e },
-                { top: 0x5733ff, bottom: 0x0a0a15 },
-                { top: 0x00ff88, bottom: 0x1a1a2e },
-                { top: 0xff8800, bottom: 0x0a0a15 }
+                { top: 0xffffff, bottom: 0x1a1a1a },
+                { top: 0xdddddd, bottom: 0x0a0a0a },
+                { top: 0xbbbbbb, bottom: 0x1a1a1a },
+                { top: 0x999999, bottom: 0x0a0a0a },
+                { top: 0x888888, bottom: 0x1a1a1a },
+                { top: 0x777777, bottom: 0x0a0a0a },
+                { top: 0xcccccc, bottom: 0x1a1a1a },
+                { top: 0xaaaaaa, bottom: 0x0a0a0a },
+                { top: 0x666666, bottom: 0x1a1a1a },
+                { top: 0x555555, bottom: 0x0a0a0a },
+                { top: 0x444444, bottom: 0x1a1a1a },
+                { top: 0x333333, bottom: 0x0a0a0a }
             ];
             
             dancerPositions.forEach((pos, i) => {
@@ -1009,7 +1009,7 @@
             const dancerGroup = new THREE.Group();
             
             // More realistic body proportions
-            const skinTones = [0xf5d0c5, 0xd4a574, 0xc68642, 0x8d5524, 0xf1c27d, 0xe0ac69, 0xa0522d];
+            const skinTones = [0xe0e0e0, 0xc0c0c0, 0xa0a0a0, 0x808080, 0xd0d0d0, 0xb0b0b0, 0x909090];
             const skinTone = skinTones[index % skinTones.length];
             const isFemale = index % 2 === 0;
             
@@ -1062,7 +1062,7 @@
             dancerGroup.add(head);
             
             // Hair
-            const hairColors = [0x1a1a1a, 0x2a1a0a, 0x4a3728, 0x8b4513, 0xdaa520, 0xa52a2a, 0x800000];
+            const hairColors = [0x1a1a1a, 0x2a2a2a, 0x3a3a3a, 0x4a4a4a, 0x5a5a5a, 0x6a6a6a, 0x7a7a7a];
             const hairColor = hairColors[index % hairColors.length];
             const hairMat = new THREE.MeshStandardMaterial({ color: hairColor, roughness: 0.9 });
             
