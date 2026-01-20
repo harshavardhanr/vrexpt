@@ -883,7 +883,7 @@
                 type: 'seat',
                 row: row + 1,
                 index: index + 1,
-                viewPosition: new THREE.Vector3(x, y + 1.6, z - 0.5),
+                viewPosition: new THREE.Vector3(x, y + 1.2, z + 0.4), // Positioned in front of seat after 180° rotation
                 accentColor,
                 ledMesh: led,
                 baseLedIntensity: 0.5
@@ -1551,59 +1551,74 @@
                 // Seated mode - position camera at seat height looking at stage
                 isSeated = true;
                 seatedPosition = viewPos.clone();
-                
-                // Set camera rig to seat position (floor level)
-                cameraRig.position.set(viewPos.x, 0, viewPos.z);
-                
-                // Position camera at seated eye level (slightly lower than standing)
-                const seatedEyeHeight = viewPos.y;
-                camera.position.set(0, seatedEyeHeight, 0);
-                
-                // Calculate look target at stage
-                const stageCenter = new THREE.Vector3(0, 3, -25);
-                
-                // Set orbit controls target just in front of seated position for head-turn effect
-                const lookDistance = 5;
-                const dirToStage = new THREE.Vector3().subVectors(stageCenter, new THREE.Vector3(viewPos.x, seatedEyeHeight, viewPos.z)).normalize();
-                const lookTarget = new THREE.Vector3(
-                    viewPos.x + dirToStage.x * lookDistance,
-                    seatedEyeHeight,
-                    viewPos.z + dirToStage.z * lookDistance
-                );
-                
-                controls.target.copy(lookTarget);
-                controls.minDistance = lookDistance - 0.5;
-                controls.maxDistance = lookDistance + 0.5;
-                controls.minPolarAngle = Math.PI / 3;    // Limit looking too far up
-                controls.maxPolarAngle = Math.PI / 1.6;  // Limit looking too far down
-                controls.minAzimuthAngle = -Math.PI / 2.5; // Limit left turn (about 72 degrees)
-                controls.maxAzimuthAngle = Math.PI / 2.5;  // Limit right turn
-                controls.enablePan = false;
-                controls.enableZoom = false;
-                controls.rotateSpeed = 0.3;
-                controls.update();
-                
+
+                if (renderer.xr.isPresenting) {
+                    // VR mode - position cameraRig at seat location
+                    cameraRig.position.set(viewPos.x, viewPos.y - 1.6, viewPos.z); // Offset by default standing height
+                    // In VR, camera position is controlled by headset tracking
+                    // The HMD will add its tracked position relative to the cameraRig
+                } else {
+                    // Desktop mode - position camera directly
+                    // Set camera rig to seat position (floor level)
+                    cameraRig.position.set(viewPos.x, 0, viewPos.z);
+
+                    // Position camera at seated eye level
+                    const seatedEyeHeight = viewPos.y;
+                    camera.position.set(0, seatedEyeHeight, 0);
+
+                    // Calculate look target at stage
+                    const stageCenter = new THREE.Vector3(0, 3, -25);
+
+                    // Set orbit controls target just in front of seated position for head-turn effect
+                    const lookDistance = 5;
+                    const dirToStage = new THREE.Vector3().subVectors(stageCenter, new THREE.Vector3(viewPos.x, seatedEyeHeight, viewPos.z)).normalize();
+                    const lookTarget = new THREE.Vector3(
+                        viewPos.x + dirToStage.x * lookDistance,
+                        seatedEyeHeight,
+                        viewPos.z + dirToStage.z * lookDistance
+                    );
+
+                    controls.target.copy(lookTarget);
+                    controls.minDistance = lookDistance - 0.5;
+                    controls.maxDistance = lookDistance + 0.5;
+                    controls.minPolarAngle = Math.PI / 3;    // Limit looking too far up
+                    controls.maxPolarAngle = Math.PI / 1.6;  // Limit looking too far down
+                    controls.minAzimuthAngle = -Math.PI / 2.5; // Limit left turn (about 72 degrees)
+                    controls.maxAzimuthAngle = Math.PI / 2.5;  // Limit right turn
+                    controls.enablePan = false;
+                    controls.enableZoom = false;
+                    controls.rotateSpeed = 0.3;
+                    controls.update();
+                }
+
             } else {
                 // Dance floor mode - free movement
                 isSeated = false;
                 seatedPosition = null;
-                
-                // Reset camera rig and camera
-                cameraRig.position.set(viewPos.x, 0, viewPos.z);
-                camera.position.set(0, 1.6, 0);
-                
-                // Reset orbit controls for free movement
-                controls.target.set(viewPos.x, 2, viewPos.z - 5);
-                controls.minDistance = 2;
-                controls.maxDistance = 40;
-                controls.minPolarAngle = 0;
-                controls.maxPolarAngle = Math.PI / 1.8;
-                controls.minAzimuthAngle = -Infinity;
-                controls.maxAzimuthAngle = Infinity;
-                controls.enablePan = true;
-                controls.enableZoom = true;
-                controls.rotateSpeed = 0.5;
-                controls.update();
+
+                if (renderer.xr.isPresenting) {
+                    // VR mode - position cameraRig at floor level
+                    cameraRig.position.set(viewPos.x, 0, viewPos.z);
+                    // Camera tracking handled by HMD
+                } else {
+                    // Desktop mode
+                    // Reset camera rig and camera
+                    cameraRig.position.set(viewPos.x, 0, viewPos.z);
+                    camera.position.set(0, 1.6, 0);
+
+                    // Reset orbit controls for free movement
+                    controls.target.set(viewPos.x, 2, viewPos.z - 5);
+                    controls.minDistance = 2;
+                    controls.maxDistance = 40;
+                    controls.minPolarAngle = 0;
+                    controls.maxPolarAngle = Math.PI / 1.8;
+                    controls.minAzimuthAngle = -Infinity;
+                    controls.maxAzimuthAngle = Infinity;
+                    controls.enablePan = true;
+                    controls.enableZoom = true;
+                    controls.rotateSpeed = 0.5;
+                    controls.update();
+                }
             }
             
             currentSeat = seatName;
@@ -1783,9 +1798,6 @@
         }
 
         function updateMovement(delta) {
-            // Don't allow WASD movement when seated
-            if (isSeated && !renderer.xr.isPresenting) return;
-
             const direction = new THREE.Vector3();
             const forward = new THREE.Vector3();
             const right = new THREE.Vector3();
@@ -1793,6 +1805,9 @@
             if (renderer.xr.isPresenting) {
                 // VR locomotion using controllers
                 updateVRControllerInput();
+
+                // Don't allow controller locomotion when seated (but allow looking via HMD)
+                if (isSeated) return;
 
                 // Get camera direction for forward movement
                 camera.getWorldDirection(forward);
@@ -1822,6 +1837,8 @@
                     cameraRig.position.add(direction.multiplyScalar(vrMoveSpeed * delta));
                 }
             } else {
+                // Desktop mode - don't allow WASD movement when seated
+                if (isSeated) return;
                 // Desktop WASD movement
                 camera.getWorldDirection(forward);
                 forward.y = 0;
