@@ -887,7 +887,7 @@
                 type: 'seat',
                 row: row + 1,
                 index: index + 1,
-                viewPosition: new THREE.Vector3(x, y + 1.2, z + 1.2), // Positioned further forward for better stage viewing
+                viewPosition: new THREE.Vector3(x, y + 1.7, z - 1.0), // In front of rotated seat, better height
                 accentColor,
                 ledMesh: led,
                 baseLedIntensity: 0.5
@@ -1440,6 +1440,12 @@
             // Slightly below eye level and in front
             egocentricPanel.position.set(0, -0.25, -0.7); // 0.7m forward, 0.25m below center
 
+            // Tilt the panel for better viewing (rotate around X axis)
+            egocentricPanel.rotation.x = -0.3; // Tilt downward slightly (~17 degrees)
+
+            // Start invisible - toggle with X button on left controller
+            egocentricPanel.visible = false;
+
             // Attach to camera so it moves with the user's view
             camera.add(egocentricPanel);
         }
@@ -1451,6 +1457,7 @@
             controller1 = renderer.xr.getController(0);
             controller1.addEventListener('selectstart', onSelectStart);
             controller1.addEventListener('selectend', onSelectEnd);
+            controller1.addEventListener('squeezestart', toggleEgocentricPanel); // X button to toggle panel
             controller1.addEventListener('connected', (event) => {
                 console.log('Controller 1 connected:', event.data.gamepad);
             });
@@ -1554,7 +1561,15 @@
         function onSelectEnd(event) {
             // Handle any select end logic
         }
-        
+
+        function toggleEgocentricPanel(event) {
+            // Toggle visibility of the egocentric panel with X button (squeeze) on left controller
+            if (egocentricPanel) {
+                egocentricPanel.visible = !egocentricPanel.visible;
+                console.log('Egocentric panel:', egocentricPanel.visible ? 'visible' : 'hidden');
+            }
+        }
+
         function teleportToTarget(target) {
             let viewPos;
             let seatName;
