@@ -994,21 +994,31 @@
         
         function loadRiggedHuman() {
             // Load the rigged human GLB model
+            console.log('Attempting to load riggedhuman.glb...');
             const loader = new GLTFLoader();
             loader.load(
                 'riggedhuman.glb',
                 (gltf) => {
                     riggedHumanModel = gltf;
-                    console.log('Rigged human model loaded successfully');
-                    console.log('Animations:', gltf.animations.length);
+                    console.log('✓ Rigged human model loaded successfully!');
+                    console.log('  - Animations found:', gltf.animations.length);
+                    if (gltf.animations.length > 0) {
+                        console.log('  - First animation:', gltf.animations[0].name, 'duration:', gltf.animations[0].duration + 's');
+                    }
                     // Now create dancers with the loaded model
                     createDancersWithModel();
                 },
                 (progress) => {
-                    console.log('Loading model:', (progress.loaded / progress.total * 100).toFixed(2) + '%');
+                    if (progress.total > 0) {
+                        const percent = (progress.loaded / progress.total * 100).toFixed(2);
+                        console.log('  Loading model: ' + percent + '%');
+                    }
                 },
                 (error) => {
-                    console.error('Error loading rigged human model:', error);
+                    console.error('✗ Error loading rigged human model:');
+                    console.error('  - Error details:', error);
+                    console.error('  - Make sure riggedhuman.glb is in the same directory as index.html');
+                    console.warn('  → Falling back to procedural dancers');
                     // Fallback: create all procedural dancers
                     createDancersWithModel();
                 }
