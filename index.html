@@ -883,7 +883,7 @@
                 type: 'seat',
                 row: row + 1,
                 index: index + 1,
-                viewPosition: new THREE.Vector3(x, y + 1.2, z + 0.4), // Positioned in front of seat after 180° rotation
+                viewPosition: new THREE.Vector3(x, y + 1.2, z + 1.2), // Positioned further forward for better stage viewing
                 accentColor,
                 ledMesh: led,
                 baseLedIntensity: 0.5
@@ -1806,9 +1806,6 @@
                 // VR locomotion using controllers
                 updateVRControllerInput();
 
-                // Don't allow controller locomotion when seated (but allow looking via HMD)
-                if (isSeated) return;
-
                 // Get camera direction for forward movement
                 camera.getWorldDirection(forward);
                 forward.y = 0;
@@ -1818,6 +1815,12 @@
 
                 // Left controller thumbstick for movement
                 if (Math.abs(controller1Axes.x) > 0.1 || Math.abs(controller1Axes.y) > 0.1) {
+                    // Automatically exit seated mode when moving with joystick
+                    if (isSeated) {
+                        isSeated = false;
+                        seatedPosition = null;
+                    }
+
                     // Forward/backward
                     direction.add(forward.clone().multiplyScalar(-controller1Axes.y));
                     // Left/right strafe
