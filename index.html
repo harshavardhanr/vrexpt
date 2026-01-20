@@ -250,7 +250,8 @@
         import { VRButton } from 'three/addons/webxr/VRButton.js';
         import { XRControllerModelFactory } from 'three/addons/webxr/XRControllerModelFactory.js';
         import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-        
+        import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+
         // Scene state
         let scene, camera, renderer, controls;
         let controller1, controller2, controllerGrip1, controllerGrip2;
@@ -258,6 +259,8 @@
         let controllerCursor1, controllerCursor2;
         let cameraRig;
         let egocentricPanel; // Body-locked UI panel
+        let riggedHumanModel = null; // Loaded GLB model
+        let animationMixers = []; // Animation mixers for rigged models
         let seats = [];
         let interactiveObjects = [];
         let bandMembers = [];
@@ -989,7 +992,35 @@
             interactiveObjects.push(danceHitbox);
         }
         
+        function loadRiggedHuman() {
+            // Load the rigged human GLB model
+            const loader = new GLTFLoader();
+            loader.load(
+                'riggedhuman.glb',
+                (gltf) => {
+                    riggedHumanModel = gltf;
+                    console.log('Rigged human model loaded successfully');
+                    console.log('Animations:', gltf.animations.length);
+                    // Now create dancers with the loaded model
+                    createDancersWithModel();
+                },
+                (progress) => {
+                    console.log('Loading model:', (progress.loaded / progress.total * 100).toFixed(2) + '%');
+                },
+                (error) => {
+                    console.error('Error loading rigged human model:', error);
+                    // Fallback: create all procedural dancers
+                    createDancersWithModel();
+                }
+            );
+        }
+
         function createDancers() {
+            // Start loading the rigged human model
+            loadRiggedHuman();
+        }
+
+        function createDancersWithModel() {
             // Create dancing figures on the dance floor - positioned for smaller floor
             const dancerPositions = [
                 { x: -6, z: -13 },
@@ -1005,7 +1036,7 @@
                 { x: -7, z: -12 },
                 { x: 7, z: -11 }
             ];
-            
+
             const outfitColors = [
                 { top: 0xffffff, bottom: 0x1a1a1a },
                 { top: 0xdddddd, bottom: 0x0a0a0a },
@@ -1020,12 +1051,66 @@
                 { top: 0x444444, bottom: 0x1a1a1a },
                 { top: 0x333333, bottom: 0x0a0a0a }
             ];
-            
+
             dancerPositions.forEach((pos, i) => {
-                createDancer(pos.x, 0, pos.z, outfitColors[i % outfitColors.length], i);
+                // Replace first 2 dancers with rigged model if loaded
+                if (riggedHumanModel && i < 2) {
+                    createRiggedDancer(pos.x, 0, pos.z, i);
+                } else {
+                    createDancer(pos.x, 0, pos.z, outfitColors[i % outfitColors.length], i);
+                }
             });
         }
-        
+
+        function createRiggedDancer(x, y, z, index) {
+            // Clone the loaded GLB model scene
+            const modelClone = riggedHumanModel.scene.clone();
+
+            // Position the model
+            modelClone.position.set(x, y, z);
+
+            // Scale the model to match approximate dancer size (adjust as needed)
+            modelClone.scale.set(1, 1, 1);
+
+            // Random facing toward stage
+            modelClone.rotation.y = Math.random() * Math.PI * 0.5 - Math.PI * 0.25;
+
+            // Store metadata
+            modelClone.userData = {
+                baseX: x,
+                baseY: y,
+                baseZ: z,
+                animOffset: Math.random() * Math.PI * 2,
+                danceStyle: index % 6,
+                speed: 0.9 + Math.random() * 0.3,
+                facing: modelClone.rotation.y,
+                isRigged: true
+            };
+
+            scene.add(modelClone);
+            dancers.push(modelClone);
+
+            // Set up animation mixer if model has animations
+            if (riggedHumanModel.animations && riggedHumanModel.animations.length > 0) {
+                const mixer = new THREE.AnimationMixer(modelClone);
+
+                // Play the first animation (or loop through all)
+                const clip = riggedHumanModel.animations[0];
+                const action = mixer.clipAction(clip);
+                action.play();
+
+                // Store mixer with time offset for variety
+                animationMixers.push({
+                    mixer: mixer,
+                    timeOffset: Math.random() * clip.duration
+                });
+
+                console.log('Animation set up for rigged dancer', index);
+            } else {
+                console.warn('No animations found in rigged human model');
+            }
+        }
+
         function createDancer(x, y, z, outfit, index) {
             const dancerGroup = new THREE.Group();
             
@@ -2018,12 +2103,16 @@
             const beat = Math.sin(time * 4) * 0.5 + 0.5;
             const beatPulse = Math.pow(beat, 3);
             const strongBeat = Math.pow(Math.sin(time * 2) * 0.5 + 0.5, 2);
-            
+
             dancers.forEach((dancer, i) => {
                 const data = dancer.userData;
+
+                // Skip rigged models - they have their own animation system
+                if (data.isRigged) return;
+
                 const t = time * data.speed;
                 const offset = data.animOffset;
-                
+
                 // Get body parts
                 const hips = dancer.children.find(c => c.name === 'hips');
                 const torso = dancer.children.find(c => c.name === 'torso');
@@ -2310,6 +2399,15 @@
             }
         }
 
+        function updateRiggedAnimations(delta) {
+            // Update all animation mixers for rigged models
+            animationMixers.forEach((mixerData) => {
+                if (mixerData.mixer) {
+                    mixerData.mixer.update(delta);
+                }
+            });
+        }
+
         function animate() {
             renderer.setAnimationLoop(render);
         }
@@ -2330,6 +2428,9 @@
 
             // Update dancers on the dance floor
             updateDancers(time);
+
+            // Update rigged model animations
+            updateRiggedAnimations(delta);
 
             // Update VR controllers
             updateVRControllers();
