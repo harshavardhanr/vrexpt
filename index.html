@@ -302,6 +302,9 @@
         let controller2Axes = { x: 0, y: 0 };
         let lastSnapTurnTime = 0;
         const snapTurnCooldown = 0.3; // seconds between snap turns
+
+        // VR Controller button states
+        let lastXButtonState = false;
         
         // Colors
         const NEON_PINK = 0xff006e;
@@ -887,7 +890,7 @@
                 type: 'seat',
                 row: row + 1,
                 index: index + 1,
-                viewPosition: new THREE.Vector3(x, y + 1.7, z - 1.0), // In front of rotated seat, better height
+                viewPosition: new THREE.Vector3(x, y + 1.4, z - 1.0), // In front of rotated seat, adjusted height
                 accentColor,
                 ledMesh: led,
                 baseLedIntensity: 0.5
@@ -1457,7 +1460,6 @@
             controller1 = renderer.xr.getController(0);
             controller1.addEventListener('selectstart', onSelectStart);
             controller1.addEventListener('selectend', onSelectEnd);
-            controller1.addEventListener('squeezestart', toggleEgocentricPanel); // X button to toggle panel
             controller1.addEventListener('connected', (event) => {
                 console.log('Controller 1 connected:', event.data.gamepad);
             });
@@ -1562,8 +1564,8 @@
             // Handle any select end logic
         }
 
-        function toggleEgocentricPanel(event) {
-            // Toggle visibility of the egocentric panel with X button (squeeze) on left controller
+        function toggleEgocentricPanel() {
+            // Toggle visibility of the egocentric panel with X button on left controller
             if (egocentricPanel) {
                 egocentricPanel.visible = !egocentricPanel.visible;
                 console.log('Egocentric panel:', egocentricPanel.visible ? 'visible' : 'hidden');
@@ -1825,15 +1827,29 @@
                 const inputSource = inputSources[i];
                 const gamepad = inputSource.gamepad;
 
-                if (gamepad && gamepad.axes.length >= 2) {
+                if (gamepad) {
                     if (inputSource.handedness === 'left' || i === 0) {
                         // Left controller for movement
-                        controller1Axes.x = Math.abs(gamepad.axes[2]) > 0.1 ? gamepad.axes[2] : 0;
-                        controller1Axes.y = Math.abs(gamepad.axes[3]) > 0.1 ? gamepad.axes[3] : 0;
+                        if (gamepad.axes.length >= 4) {
+                            controller1Axes.x = Math.abs(gamepad.axes[2]) > 0.1 ? gamepad.axes[2] : 0;
+                            controller1Axes.y = Math.abs(gamepad.axes[3]) > 0.1 ? gamepad.axes[3] : 0;
+                        }
+
+                        // Check X button (button index 4 on Quest controllers)
+                        if (gamepad.buttons.length > 4) {
+                            const xButtonPressed = gamepad.buttons[4].pressed;
+                            // Toggle on button press (detect rising edge)
+                            if (xButtonPressed && !lastXButtonState) {
+                                toggleEgocentricPanel();
+                            }
+                            lastXButtonState = xButtonPressed;
+                        }
                     } else if (inputSource.handedness === 'right' || i === 1) {
                         // Right controller for rotation
-                        controller2Axes.x = Math.abs(gamepad.axes[2]) > 0.1 ? gamepad.axes[2] : 0;
-                        controller2Axes.y = Math.abs(gamepad.axes[3]) > 0.1 ? gamepad.axes[3] : 0;
+                        if (gamepad.axes.length >= 4) {
+                            controller2Axes.x = Math.abs(gamepad.axes[2]) > 0.1 ? gamepad.axes[2] : 0;
+                            controller2Axes.y = Math.abs(gamepad.axes[3]) > 0.1 ? gamepad.axes[3] : 0;
+                        }
                     }
                 }
             }
