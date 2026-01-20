@@ -257,6 +257,7 @@
         let controllerRay1, controllerRay2;
         let controllerCursor1, controllerCursor2;
         let cameraRig;
+        let egocentricPanel; // Body-locked UI panel
         let seats = [];
         let interactiveObjects = [];
         let bandMembers = [];
@@ -326,7 +327,10 @@
             camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
             camera.position.set(0, 1.6, 20);
             cameraRig.add(camera);
-            
+
+            // Create egocentric body-locked panel
+            createEgocentricPanel();
+
             // Renderer
             renderer = new THREE.WebGLRenderer({ antialias: true });
             renderer.setSize(window.innerWidth, window.innerHeight);
@@ -1416,7 +1420,30 @@
             barGroup.position.set(0, 1.5, -31.5);
             scene.add(barGroup);
         }
-        
+
+        function createEgocentricPanel() {
+            // Create a body-locked panel (480x320 pixels -> 0.48x0.32 meters)
+            const panelWidth = 0.48;
+            const panelHeight = 0.32;
+
+            const panelGeometry = new THREE.PlaneGeometry(panelWidth, panelHeight);
+            const panelMaterial = new THREE.MeshBasicMaterial({
+                color: 0x808080, // Grey color
+                transparent: true,
+                opacity: 0.4, // 60% transparency (40% opaque)
+                side: THREE.DoubleSide
+            });
+
+            egocentricPanel = new THREE.Mesh(panelGeometry, panelMaterial);
+
+            // Position the panel in front of the user
+            // Slightly below eye level and in front
+            egocentricPanel.position.set(0, -0.25, -0.7); // 0.7m forward, 0.25m below center
+
+            // Attach to camera so it moves with the user's view
+            camera.add(egocentricPanel);
+        }
+
         function setupVRControllers() {
             const controllerModelFactory = new XRControllerModelFactory();
 
