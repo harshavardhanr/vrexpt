@@ -993,11 +993,13 @@
         }
         
         function loadRiggedHuman() {
-            // Load the rigged human GLB model
+            // Load the rigged human GLB model from GitHub LFS
             console.log('Attempting to load riggedhuman.glb...');
             const loader = new GLTFLoader();
+            // Use GitHub LFS media URL to access the actual binary file
+            const modelURL = 'https://media.githubusercontent.com/media/harshavardhanr/vrexpt/main/riggedhuman.glb';
             loader.load(
-                'riggedhuman.glb',
+                modelURL,
                 (gltf) => {
                     riggedHumanModel = gltf;
                     console.log('✓ Rigged human model loaded successfully!');
