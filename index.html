@@ -254,6 +254,8 @@
         // Scene state
         let scene, camera, renderer, controls;
         let controller1, controller2, controllerGrip1, controllerGrip2;
+        let controllerRay1, controllerRay2;
+        let controllerCursor1, controllerCursor2;
         let cameraRig;
         let seats = [];
         let interactiveObjects = [];
@@ -267,11 +269,15 @@
         let time = 0;
         let beatTime = 0;
         let currentSeat = 'Dance Floor';
-        
+
         // Raycaster for interaction
         const raycaster = new THREE.Raycaster();
+        const controllerRaycaster1 = new THREE.Raycaster();
+        const controllerRaycaster2 = new THREE.Raycaster();
         const pointer = new THREE.Vector2();
         let hoveredObject = null;
+        let controller1Hovered = null;
+        let controller2Hovered = null;
         
         // Click vs drag detection
         let mouseDownPos = { x: 0, y: 0 };
@@ -287,6 +293,14 @@
         // Movement
         const moveState = { forward: false, backward: false, left: false, right: false };
         const moveSpeed = 5;
+        const vrMoveSpeed = 3; // Slower speed for VR comfort
+        const vrRotateSpeed = 2; // Rotation speed for VR snap turning
+
+        // VR Controller input axes
+        let controller1Axes = { x: 0, y: 0 };
+        let controller2Axes = { x: 0, y: 0 };
+        let lastSnapTurnTime = 0;
+        const snapTurnCooldown = 0.3; // seconds between snap turns
         
         // Colors
         const NEON_PINK = 0xff006e;
@@ -1405,56 +1419,108 @@
         
         function setupVRControllers() {
             const controllerModelFactory = new XRControllerModelFactory();
-            
-            // Controller 1
+
+            // Controller 1 (left hand - movement)
             controller1 = renderer.xr.getController(0);
             controller1.addEventListener('selectstart', onSelectStart);
             controller1.addEventListener('selectend', onSelectEnd);
+            controller1.addEventListener('connected', (event) => {
+                console.log('Controller 1 connected:', event.data.gamepad);
+            });
             cameraRig.add(controller1);
-            
+
             controllerGrip1 = renderer.xr.getControllerGrip(0);
             controllerGrip1.add(controllerModelFactory.createControllerModel(controllerGrip1));
             cameraRig.add(controllerGrip1);
-            
-            // Controller 2
+
+            // Controller 2 (right hand - rotation)
             controller2 = renderer.xr.getController(1);
             controller2.addEventListener('selectstart', onSelectStart);
             controller2.addEventListener('selectend', onSelectEnd);
+            controller2.addEventListener('connected', (event) => {
+                console.log('Controller 2 connected:', event.data.gamepad);
+            });
             cameraRig.add(controller2);
-            
+
             controllerGrip2 = renderer.xr.getControllerGrip(1);
             controllerGrip2.add(controllerModelFactory.createControllerModel(controllerGrip2));
             cameraRig.add(controllerGrip2);
-            
-            // Add ray for aiming
+
+            // Add ray for aiming with better visibility
             const rayGeo = new THREE.BufferGeometry().setFromPoints([
                 new THREE.Vector3(0, 0, 0),
                 new THREE.Vector3(0, 0, -1)
             ]);
-            const rayMat = new THREE.LineBasicMaterial({
-                color: NEON_PURPLE,
+
+            // Ray for controller 1
+            const rayMat1 = new THREE.LineBasicMaterial({
+                color: 0xcccccc,
                 transparent: true,
-                opacity: 0.5
+                opacity: 0.6,
+                linewidth: 2
             });
-            const ray = new THREE.Line(rayGeo, rayMat);
-            ray.scale.z = 10;
-            controller1.add(ray.clone());
-            controller2.add(ray.clone());
+            controllerRay1 = new THREE.Line(rayGeo, rayMat1);
+            controllerRay1.scale.z = 15;
+            controller1.add(controllerRay1);
+
+            // Ray for controller 2
+            const rayMat2 = new THREE.LineBasicMaterial({
+                color: 0xcccccc,
+                transparent: true,
+                opacity: 0.6,
+                linewidth: 2
+            });
+            controllerRay2 = new THREE.Line(rayGeo, rayMat2);
+            controllerRay2.scale.z = 15;
+            controller2.add(controllerRay2);
+
+            // Add cursor/reticle at ray end for controller 1
+            const cursorGeo = new THREE.RingGeometry(0.02, 0.04, 16);
+            const cursorMat1 = new THREE.MeshBasicMaterial({
+                color: 0xffffff,
+                transparent: true,
+                opacity: 0.7,
+                side: THREE.DoubleSide
+            });
+            controllerCursor1 = new THREE.Mesh(cursorGeo, cursorMat1);
+            controllerCursor1.visible = false;
+            scene.add(controllerCursor1);
+
+            // Add cursor/reticle at ray end for controller 2
+            const cursorMat2 = new THREE.MeshBasicMaterial({
+                color: 0xffffff,
+                transparent: true,
+                opacity: 0.7,
+                side: THREE.DoubleSide
+            });
+            controllerCursor2 = new THREE.Mesh(cursorGeo, cursorMat2);
+            controllerCursor2.visible = false;
+            scene.add(controllerCursor2);
         }
         
         function onSelectStart(event) {
             const controller = event.target;
-            const tempMatrix = new THREE.Matrix4();
-            tempMatrix.identity().extractRotation(controller.matrixWorld);
-            
-            raycaster.ray.origin.setFromMatrixPosition(controller.matrixWorld);
-            raycaster.ray.direction.set(0, 0, -1).applyMatrix4(tempMatrix);
-            
-            const intersects = raycaster.intersectObjects(interactiveObjects);
-            
-            if (intersects.length > 0) {
-                const target = intersects[0].object;
+
+            // Use the stored hover information from continuous raycasting
+            let targetIntersect = null;
+            if (controller === controller1 && controller1Hovered) {
+                targetIntersect = controller1Hovered;
+            } else if (controller === controller2 && controller2Hovered) {
+                targetIntersect = controller2Hovered;
+            }
+
+            if (targetIntersect) {
+                const target = targetIntersect.object;
                 teleportToTarget(target);
+
+                // Visual feedback - pulse the cursor
+                const cursor = controller === controller1 ? controllerCursor1 : controllerCursor2;
+                if (cursor && cursor.visible) {
+                    cursor.material.color.setHex(0xffffff);
+                    setTimeout(() => {
+                        if (cursor.visible) cursor.material.color.setHex(0x00ff00);
+                    }, 100);
+                }
             }
         }
         
@@ -1691,31 +1757,88 @@
             }
         }
         
+        function updateVRControllerInput() {
+            // Read controller axes from gamepad API
+            const session = renderer.xr.getSession();
+            if (!session) return;
+
+            const inputSources = session.inputSources;
+
+            for (let i = 0; i < inputSources.length; i++) {
+                const inputSource = inputSources[i];
+                const gamepad = inputSource.gamepad;
+
+                if (gamepad && gamepad.axes.length >= 2) {
+                    if (inputSource.handedness === 'left' || i === 0) {
+                        // Left controller for movement
+                        controller1Axes.x = Math.abs(gamepad.axes[2]) > 0.1 ? gamepad.axes[2] : 0;
+                        controller1Axes.y = Math.abs(gamepad.axes[3]) > 0.1 ? gamepad.axes[3] : 0;
+                    } else if (inputSource.handedness === 'right' || i === 1) {
+                        // Right controller for rotation
+                        controller2Axes.x = Math.abs(gamepad.axes[2]) > 0.1 ? gamepad.axes[2] : 0;
+                        controller2Axes.y = Math.abs(gamepad.axes[3]) > 0.1 ? gamepad.axes[3] : 0;
+                    }
+                }
+            }
+        }
+
         function updateMovement(delta) {
-            if (renderer.xr.isPresenting) return;
-            
             // Don't allow WASD movement when seated
-            if (isSeated) return;
-            
+            if (isSeated && !renderer.xr.isPresenting) return;
+
             const direction = new THREE.Vector3();
             const forward = new THREE.Vector3();
             const right = new THREE.Vector3();
-            
-            camera.getWorldDirection(forward);
-            forward.y = 0;
-            forward.normalize();
-            
-            right.crossVectors(forward, new THREE.Vector3(0, 1, 0));
-            
-            if (moveState.forward) direction.add(forward);
-            if (moveState.backward) direction.sub(forward);
-            if (moveState.left) direction.sub(right);
-            if (moveState.right) direction.add(right);
-            
-            if (direction.length() > 0) {
-                direction.normalize();
-                camera.position.add(direction.multiplyScalar(moveSpeed * delta));
-                controls.target.add(direction.multiplyScalar(moveSpeed * delta));
+
+            if (renderer.xr.isPresenting) {
+                // VR locomotion using controllers
+                updateVRControllerInput();
+
+                // Get camera direction for forward movement
+                camera.getWorldDirection(forward);
+                forward.y = 0;
+                forward.normalize();
+
+                right.crossVectors(forward, new THREE.Vector3(0, 1, 0));
+
+                // Left controller thumbstick for movement
+                if (Math.abs(controller1Axes.x) > 0.1 || Math.abs(controller1Axes.y) > 0.1) {
+                    // Forward/backward
+                    direction.add(forward.clone().multiplyScalar(-controller1Axes.y));
+                    // Left/right strafe
+                    direction.add(right.clone().multiplyScalar(controller1Axes.x));
+                }
+
+                // Right controller thumbstick for snap turning
+                const currentTime = performance.now() / 1000;
+                if (Math.abs(controller2Axes.x) > 0.7 && currentTime - lastSnapTurnTime > snapTurnCooldown) {
+                    const snapAngle = controller2Axes.x > 0 ? -Math.PI / 4 : Math.PI / 4; // 45 degree snap turns
+                    cameraRig.rotation.y += snapAngle;
+                    lastSnapTurnTime = currentTime;
+                }
+
+                if (direction.length() > 0) {
+                    direction.normalize();
+                    cameraRig.position.add(direction.multiplyScalar(vrMoveSpeed * delta));
+                }
+            } else {
+                // Desktop WASD movement
+                camera.getWorldDirection(forward);
+                forward.y = 0;
+                forward.normalize();
+
+                right.crossVectors(forward, new THREE.Vector3(0, 1, 0));
+
+                if (moveState.forward) direction.add(forward);
+                if (moveState.backward) direction.sub(forward);
+                if (moveState.left) direction.sub(right);
+                if (moveState.right) direction.add(right);
+
+                if (direction.length() > 0) {
+                    direction.normalize();
+                    camera.position.add(direction.multiplyScalar(moveSpeed * delta));
+                    controls.target.add(direction.multiplyScalar(moveSpeed * delta));
+                }
             }
         }
         
@@ -2034,7 +2157,81 @@
                 }
             });
         }
-        
+
+        function updateVRControllers() {
+            if (!renderer.xr.isPresenting) return;
+
+            // Update controller 1
+            if (controller1 && controllerRay1) {
+                const tempMatrix = new THREE.Matrix4();
+                tempMatrix.identity().extractRotation(controller1.matrixWorld);
+
+                controllerRaycaster1.ray.origin.setFromMatrixPosition(controller1.matrixWorld);
+                controllerRaycaster1.ray.direction.set(0, 0, -1).applyMatrix4(tempMatrix);
+
+                const intersects1 = controllerRaycaster1.intersectObjects(interactiveObjects);
+
+                if (intersects1.length > 0) {
+                    // Hovering over an interactive object
+                    controller1Hovered = intersects1[0];
+                    controllerRay1.material.color.setHex(0x00ff00); // Green when hovering
+                    controllerRay1.material.opacity = 0.8;
+
+                    // Position cursor at intersection point
+                    controllerCursor1.position.copy(intersects1[0].point);
+                    controllerCursor1.lookAt(camera.position);
+                    controllerCursor1.visible = true;
+                    controllerCursor1.material.color.setHex(0x00ff00);
+
+                    // Scale cursor based on distance
+                    const distance = intersects1[0].distance;
+                    const scale = Math.max(0.5, Math.min(2, distance * 0.1));
+                    controllerCursor1.scale.set(scale, scale, scale);
+                } else {
+                    // Not hovering over anything
+                    controller1Hovered = null;
+                    controllerRay1.material.color.setHex(0xcccccc); // Gray when not hovering
+                    controllerRay1.material.opacity = 0.6;
+                    controllerCursor1.visible = false;
+                }
+            }
+
+            // Update controller 2
+            if (controller2 && controllerRay2) {
+                const tempMatrix = new THREE.Matrix4();
+                tempMatrix.identity().extractRotation(controller2.matrixWorld);
+
+                controllerRaycaster2.ray.origin.setFromMatrixPosition(controller2.matrixWorld);
+                controllerRaycaster2.ray.direction.set(0, 0, -1).applyMatrix4(tempMatrix);
+
+                const intersects2 = controllerRaycaster2.intersectObjects(interactiveObjects);
+
+                if (intersects2.length > 0) {
+                    // Hovering over an interactive object
+                    controller2Hovered = intersects2[0];
+                    controllerRay2.material.color.setHex(0x00ff00); // Green when hovering
+                    controllerRay2.material.opacity = 0.8;
+
+                    // Position cursor at intersection point
+                    controllerCursor2.position.copy(intersects2[0].point);
+                    controllerCursor2.lookAt(camera.position);
+                    controllerCursor2.visible = true;
+                    controllerCursor2.material.color.setHex(0x00ff00);
+
+                    // Scale cursor based on distance
+                    const distance = intersects2[0].distance;
+                    const scale = Math.max(0.5, Math.min(2, distance * 0.1));
+                    controllerCursor2.scale.set(scale, scale, scale);
+                } else {
+                    // Not hovering over anything
+                    controller2Hovered = null;
+                    controllerRay2.material.color.setHex(0xcccccc); // Gray when not hovering
+                    controllerRay2.material.opacity = 0.6;
+                    controllerCursor2.visible = false;
+                }
+            }
+        }
+
         function animate() {
             renderer.setAnimationLoop(render);
         }
@@ -2043,24 +2240,27 @@
             const delta = Math.min(0.05, 1 / 60);
             time = timestamp * 0.001;
             beatTime += delta;
-            
+
             // Update movement
             updateMovement(delta);
-            
+
             // Update light show
             updateLightShow(time);
-            
+
             // Update band
             updateBandAnimation(time);
-            
+
             // Update dancers on the dance floor
             updateDancers(time);
-            
+
+            // Update VR controllers
+            updateVRControllers();
+
             // Update controls
             if (!renderer.xr.isPresenting) {
                 controls.update();
             }
-            
+
             renderer.render(scene, camera);
         }
     </script>
