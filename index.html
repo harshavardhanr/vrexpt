@@ -293,6 +293,14 @@
         // Movement
         const moveState = { forward: false, backward: false, left: false, right: false };
         const moveSpeed = 5;
+        const vrMoveSpeed = 3; // Slower speed for VR comfort
+        const vrRotateSpeed = 2; // Rotation speed for VR snap turning
+
+        // VR Controller input axes
+        let controller1Axes = { x: 0, y: 0 };
+        let controller2Axes = { x: 0, y: 0 };
+        let lastSnapTurnTime = 0;
+        const snapTurnCooldown = 0.3; // seconds between snap turns
         
         // Colors
         const NEON_PINK = 0xff006e;
@@ -1412,20 +1420,26 @@
         function setupVRControllers() {
             const controllerModelFactory = new XRControllerModelFactory();
 
-            // Controller 1
+            // Controller 1 (left hand - movement)
             controller1 = renderer.xr.getController(0);
             controller1.addEventListener('selectstart', onSelectStart);
             controller1.addEventListener('selectend', onSelectEnd);
+            controller1.addEventListener('connected', (event) => {
+                console.log('Controller 1 connected:', event.data.gamepad);
+            });
             cameraRig.add(controller1);
 
             controllerGrip1 = renderer.xr.getControllerGrip(0);
             controllerGrip1.add(controllerModelFactory.createControllerModel(controllerGrip1));
             cameraRig.add(controllerGrip1);
 
-            // Controller 2
+            // Controller 2 (right hand - rotation)
             controller2 = renderer.xr.getController(1);
             controller2.addEventListener('selectstart', onSelectStart);
             controller2.addEventListener('selectend', onSelectEnd);
+            controller2.addEventListener('connected', (event) => {
+                console.log('Controller 2 connected:', event.data.gamepad);
+            });
             cameraRig.add(controller2);
 
             controllerGrip2 = renderer.xr.getControllerGrip(1);
@@ -1743,31 +1757,88 @@
             }
         }
         
+        function updateVRControllerInput() {
+            // Read controller axes from gamepad API
+            const session = renderer.xr.getSession();
+            if (!session) return;
+
+            const inputSources = session.inputSources;
+
+            for (let i = 0; i < inputSources.length; i++) {
+                const inputSource = inputSources[i];
+                const gamepad = inputSource.gamepad;
+
+                if (gamepad && gamepad.axes.length >= 2) {
+                    if (inputSource.handedness === 'left' || i === 0) {
+                        // Left controller for movement
+                        controller1Axes.x = Math.abs(gamepad.axes[2]) > 0.1 ? gamepad.axes[2] : 0;
+                        controller1Axes.y = Math.abs(gamepad.axes[3]) > 0.1 ? gamepad.axes[3] : 0;
+                    } else if (inputSource.handedness === 'right' || i === 1) {
+                        // Right controller for rotation
+                        controller2Axes.x = Math.abs(gamepad.axes[2]) > 0.1 ? gamepad.axes[2] : 0;
+                        controller2Axes.y = Math.abs(gamepad.axes[3]) > 0.1 ? gamepad.axes[3] : 0;
+                    }
+                }
+            }
+        }
+
         function updateMovement(delta) {
-            if (renderer.xr.isPresenting) return;
-            
             // Don't allow WASD movement when seated
-            if (isSeated) return;
-            
+            if (isSeated && !renderer.xr.isPresenting) return;
+
             const direction = new THREE.Vector3();
             const forward = new THREE.Vector3();
             const right = new THREE.Vector3();
-            
-            camera.getWorldDirection(forward);
-            forward.y = 0;
-            forward.normalize();
-            
-            right.crossVectors(forward, new THREE.Vector3(0, 1, 0));
-            
-            if (moveState.forward) direction.add(forward);
-            if (moveState.backward) direction.sub(forward);
-            if (moveState.left) direction.sub(right);
-            if (moveState.right) direction.add(right);
-            
-            if (direction.length() > 0) {
-                direction.normalize();
-                camera.position.add(direction.multiplyScalar(moveSpeed * delta));
-                controls.target.add(direction.multiplyScalar(moveSpeed * delta));
+
+            if (renderer.xr.isPresenting) {
+                // VR locomotion using controllers
+                updateVRControllerInput();
+
+                // Get camera direction for forward movement
+                camera.getWorldDirection(forward);
+                forward.y = 0;
+                forward.normalize();
+
+                right.crossVectors(forward, new THREE.Vector3(0, 1, 0));
+
+                // Left controller thumbstick for movement
+                if (Math.abs(controller1Axes.x) > 0.1 || Math.abs(controller1Axes.y) > 0.1) {
+                    // Forward/backward
+                    direction.add(forward.clone().multiplyScalar(-controller1Axes.y));
+                    // Left/right strafe
+                    direction.add(right.clone().multiplyScalar(controller1Axes.x));
+                }
+
+                // Right controller thumbstick for snap turning
+                const currentTime = performance.now() / 1000;
+                if (Math.abs(controller2Axes.x) > 0.7 && currentTime - lastSnapTurnTime > snapTurnCooldown) {
+                    const snapAngle = controller2Axes.x > 0 ? -Math.PI / 4 : Math.PI / 4; // 45 degree snap turns
+                    cameraRig.rotation.y += snapAngle;
+                    lastSnapTurnTime = currentTime;
+                }
+
+                if (direction.length() > 0) {
+                    direction.normalize();
+                    cameraRig.position.add(direction.multiplyScalar(vrMoveSpeed * delta));
+                }
+            } else {
+                // Desktop WASD movement
+                camera.getWorldDirection(forward);
+                forward.y = 0;
+                forward.normalize();
+
+                right.crossVectors(forward, new THREE.Vector3(0, 1, 0));
+
+                if (moveState.forward) direction.add(forward);
+                if (moveState.backward) direction.sub(forward);
+                if (moveState.left) direction.sub(right);
+                if (moveState.right) direction.add(right);
+
+                if (direction.length() > 0) {
+                    direction.normalize();
+                    camera.position.add(direction.multiplyScalar(moveSpeed * delta));
+                    controls.target.add(direction.multiplyScalar(moveSpeed * delta));
+                }
             }
         }
         
