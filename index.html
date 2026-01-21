@@ -1156,8 +1156,13 @@
                     child.visible = true;
                     child.frustumCulled = false;
 
-                    // Make materials very visible
+                    // Make materials very visible - force bright colors
                     if (child.material) {
+                        // Force bright color for testing - magenta for model 1, cyan for model 2
+                        const testColor = index === 0 ? 0xff00ff : 0x00ffff;
+                        child.material.color.setHex(testColor);
+                        console.log('      → Changed color to:', child.material.color.getHexString());
+
                         child.material.side = THREE.DoubleSide;
                         child.material.transparent = false;
                         child.material.opacity = 1.0;
@@ -1171,6 +1176,13 @@
                         }
                         if (child.material.metalness !== undefined) {
                             child.material.metalness = 0.1;
+                        }
+
+                        // For SkinnedMesh, ensure proper rendering
+                        if (child.isSkinnedMesh) {
+                            console.log('      → SkinnedMesh detected, skeleton bones:', child.skeleton.bones.length);
+                            child.geometry.computeBoundingBox();
+                            child.geometry.computeBoundingSphere();
                         }
                     }
                 }
