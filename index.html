@@ -259,7 +259,8 @@
         let controllerCursor1, controllerCursor2;
         let cameraRig;
         let egocentricPanel; // Body-locked UI panel
-        let riggedHumanModel = null; // Loaded GLB model
+        let riggedHumanModel1 = null; // First rigged GLB model
+        let riggedHumanModel2 = null; // Second rigged GLB model
         let animationMixers = []; // Animation mixers for rigged models
         let seats = [];
         let interactiveObjects = [];
@@ -992,67 +993,78 @@
             interactiveObjects.push(danceHitbox);
         }
         
-        function loadRiggedHuman() {
-            // Load the rigged human GLB model - try multiple URLs
-            console.log('Attempting to load riggedhuman.glb...');
+        function loadRiggedHumans() {
+            // Load both rigged human GLB models
+            console.log('Attempting to load rigged human models...');
             const loader = new GLTFLoader();
+            let modelsLoaded = 0;
 
-            // Try multiple possible URLs for the model
-            const modelURLs = [
-                './riggedhuman.glb', // Local path (relative to index.html)
-                'riggedhuman.glb', // Local path (same directory)
-                'https://raw.githubusercontent.com/harshavardhanr/vrexpt/main/riggedhuman.glb', // GitHub raw
-                'https://github.com/harshavardhanr/vrexpt/raw/main/riggedhuman.glb' // GitHub raw alternative
-            ];
-
-            let urlIndex = 0;
-
-            function tryLoadModel() {
-                if (urlIndex >= modelURLs.length) {
-                    console.error('✗ Failed to load model from all URLs');
-                    console.warn('  → Falling back to procedural dancers');
-                    createDancersWithModel();
-                    return;
-                }
-
-                const currentURL = modelURLs[urlIndex];
-                console.log('  Trying URL ' + (urlIndex + 1) + '/' + modelURLs.length + ':', currentURL);
-
-                loader.load(
-                    currentURL,
-                    (gltf) => {
-                        riggedHumanModel = gltf;
-                        console.log('✓ Rigged human model loaded successfully from:', currentURL);
-                        console.log('  - Animations found:', gltf.animations.length);
-                        if (gltf.animations.length > 0) {
-                            console.log('  - First animation:', gltf.animations[0].name, 'duration:', gltf.animations[0].duration + 's');
-                        }
-                        console.log('  - Scene children:', gltf.scene.children.length);
-                        // Now create dancers with the loaded model
-                        createDancersWithModel();
-                    },
-                    (progress) => {
-                        if (progress.total > 0) {
-                            const percent = (progress.loaded / progress.total * 100).toFixed(2);
-                            console.log('    Loading: ' + percent + '%');
-                        }
-                    },
-                    (error) => {
-                        console.warn('  ✗ Failed to load from:', currentURL);
-                        console.warn('    Error:', error.message || error);
-                        // Try next URL
-                        urlIndex++;
-                        tryLoadModel();
+            // Load riggedhuman1.glb
+            console.log('Loading riggedhuman1.glb...');
+            loader.load(
+                './riggedhuman1.glb',
+                (gltf) => {
+                    riggedHumanModel1 = gltf;
+                    console.log('✓ Model 1 loaded successfully');
+                    console.log('  - Animations found:', gltf.animations.length);
+                    if (gltf.animations.length > 0) {
+                        console.log('  - First animation:', gltf.animations[0].name, 'duration:', gltf.animations[0].duration + 's');
                     }
-                );
-            }
+                    modelsLoaded++;
+                    if (modelsLoaded === 2) {
+                        createDancersWithModel();
+                    }
+                },
+                (progress) => {
+                    if (progress.total > 0) {
+                        const percent = (progress.loaded / progress.total * 100).toFixed(2);
+                        console.log('  Model 1 loading: ' + percent + '%');
+                    }
+                },
+                (error) => {
+                    console.warn('✗ Failed to load riggedhuman1.glb:', error.message || error);
+                    modelsLoaded++;
+                    if (modelsLoaded === 2) {
+                        createDancersWithModel();
+                    }
+                }
+            );
 
-            tryLoadModel();
+            // Load riggedhuman2.glb
+            console.log('Loading riggedhuman2.glb...');
+            loader.load(
+                './riggedhuman2.glb',
+                (gltf) => {
+                    riggedHumanModel2 = gltf;
+                    console.log('✓ Model 2 loaded successfully');
+                    console.log('  - Animations found:', gltf.animations.length);
+                    if (gltf.animations.length > 0) {
+                        console.log('  - First animation:', gltf.animations[0].name, 'duration:', gltf.animations[0].duration + 's');
+                    }
+                    modelsLoaded++;
+                    if (modelsLoaded === 2) {
+                        createDancersWithModel();
+                    }
+                },
+                (progress) => {
+                    if (progress.total > 0) {
+                        const percent = (progress.loaded / progress.total * 100).toFixed(2);
+                        console.log('  Model 2 loading: ' + percent + '%');
+                    }
+                },
+                (error) => {
+                    console.warn('✗ Failed to load riggedhuman2.glb:', error.message || error);
+                    modelsLoaded++;
+                    if (modelsLoaded === 2) {
+                        createDancersWithModel();
+                    }
+                }
+            );
         }
 
         function createDancers() {
-            // Start loading the rigged human model
-            loadRiggedHuman();
+            // Start loading both rigged human models
+            loadRiggedHumans();
         }
 
         function createDancersWithModel() {
@@ -1088,18 +1100,20 @@
             ];
 
             dancerPositions.forEach((pos, i) => {
-                // Replace first 2 dancers with rigged model if loaded
-                if (riggedHumanModel && i < 2) {
-                    createRiggedDancer(pos.x, 0, pos.z, i);
+                // Replace first 2 dancers with rigged models if loaded
+                if (i === 0 && riggedHumanModel1) {
+                    createRiggedDancer(pos.x, 0, pos.z, i, riggedHumanModel1);
+                } else if (i === 1 && riggedHumanModel2) {
+                    createRiggedDancer(pos.x, 0, pos.z, i, riggedHumanModel2);
                 } else {
                     createDancer(pos.x, 0, pos.z, outfitColors[i % outfitColors.length], i);
                 }
             });
         }
 
-        function createRiggedDancer(x, y, z, index) {
+        function createRiggedDancer(x, y, z, index, riggedModel) {
             // Clone the loaded GLB model scene
-            const modelClone = riggedHumanModel.scene.clone(true);
+            const modelClone = riggedModel.scene.clone(true);
 
             // Position the model
             modelClone.position.set(x, y, z);
@@ -1143,11 +1157,11 @@
             console.log('  - Model children count:', modelClone.children.length);
 
             // Set up animation mixer for any animations (rigged or keyframe)
-            if (riggedHumanModel.animations && riggedHumanModel.animations.length > 0) {
+            if (riggedModel.animations && riggedModel.animations.length > 0) {
                 const mixer = new THREE.AnimationMixer(modelClone);
 
                 // Play all animations or just the first one
-                riggedHumanModel.animations.forEach((clip, clipIndex) => {
+                riggedModel.animations.forEach((clip, clipIndex) => {
                     const action = mixer.clipAction(clip);
                     action.play();
                     if (clipIndex === 0) {
