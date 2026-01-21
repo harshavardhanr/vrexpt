@@ -993,38 +993,61 @@
         }
         
         function loadRiggedHuman() {
-            // Load the rigged human GLB model from GitHub LFS
+            // Load the rigged human GLB model - try multiple URLs
             console.log('Attempting to load riggedhuman.glb...');
             const loader = new GLTFLoader();
-            // Use GitHub LFS media URL to access the actual binary file
-            const modelURL = 'https://media.githubusercontent.com/media/harshavardhanr/vrexpt/main/riggedhuman.glb';
-            loader.load(
-                modelURL,
-                (gltf) => {
-                    riggedHumanModel = gltf;
-                    console.log('✓ Rigged human model loaded successfully!');
-                    console.log('  - Animations found:', gltf.animations.length);
-                    if (gltf.animations.length > 0) {
-                        console.log('  - First animation:', gltf.animations[0].name, 'duration:', gltf.animations[0].duration + 's');
-                    }
-                    // Now create dancers with the loaded model
-                    createDancersWithModel();
-                },
-                (progress) => {
-                    if (progress.total > 0) {
-                        const percent = (progress.loaded / progress.total * 100).toFixed(2);
-                        console.log('  Loading model: ' + percent + '%');
-                    }
-                },
-                (error) => {
-                    console.error('✗ Error loading rigged human model:');
-                    console.error('  - Error details:', error);
-                    console.error('  - Make sure riggedhuman.glb is in the same directory as index.html');
+
+            // Try multiple possible URLs for the model
+            const modelURLs = [
+                './riggedhuman.glb', // Local path (relative to index.html)
+                'riggedhuman.glb', // Local path (same directory)
+                'https://raw.githubusercontent.com/harshavardhanr/vrexpt/main/riggedhuman.glb', // GitHub raw
+                'https://github.com/harshavardhanr/vrexpt/raw/main/riggedhuman.glb' // GitHub raw alternative
+            ];
+
+            let urlIndex = 0;
+
+            function tryLoadModel() {
+                if (urlIndex >= modelURLs.length) {
+                    console.error('✗ Failed to load model from all URLs');
                     console.warn('  → Falling back to procedural dancers');
-                    // Fallback: create all procedural dancers
                     createDancersWithModel();
+                    return;
                 }
-            );
+
+                const currentURL = modelURLs[urlIndex];
+                console.log('  Trying URL ' + (urlIndex + 1) + '/' + modelURLs.length + ':', currentURL);
+
+                loader.load(
+                    currentURL,
+                    (gltf) => {
+                        riggedHumanModel = gltf;
+                        console.log('✓ Rigged human model loaded successfully from:', currentURL);
+                        console.log('  - Animations found:', gltf.animations.length);
+                        if (gltf.animations.length > 0) {
+                            console.log('  - First animation:', gltf.animations[0].name, 'duration:', gltf.animations[0].duration + 's');
+                        }
+                        console.log('  - Scene children:', gltf.scene.children.length);
+                        // Now create dancers with the loaded model
+                        createDancersWithModel();
+                    },
+                    (progress) => {
+                        if (progress.total > 0) {
+                            const percent = (progress.loaded / progress.total * 100).toFixed(2);
+                            console.log('    Loading: ' + percent + '%');
+                        }
+                    },
+                    (error) => {
+                        console.warn('  ✗ Failed to load from:', currentURL);
+                        console.warn('    Error:', error.message || error);
+                        // Try next URL
+                        urlIndex++;
+                        tryLoadModel();
+                    }
+                );
+            }
+
+            tryLoadModel();
         }
 
         function createDancers() {
