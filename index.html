@@ -1143,11 +1143,13 @@
                     child.castShadow = true;
                     child.receiveShadow = true;
                     child.visible = true;
+                    child.frustumCulled = false; // Prevent culling issues
                     // Make sure materials are visible
                     if (child.material) {
                         child.material.side = THREE.DoubleSide;
                         child.material.transparent = false;
                         child.material.opacity = 1.0;
+                        child.material.needsUpdate = true;
                     }
                 }
             });
@@ -1164,13 +1166,33 @@
                 isRigged: true
             };
 
+            // Add visual debug marker - bright sphere to show location
+            const markerGeo = new THREE.SphereGeometry(0.3, 16, 16);
+            const markerMat = new THREE.MeshBasicMaterial({
+                color: index === 0 ? 0xff0000 : 0x00ff00,
+                wireframe: false
+            });
+            const marker = new THREE.Mesh(markerGeo, markerMat);
+            marker.position.set(x, y + 1, z); // Place above ground at position
+            scene.add(marker);
+            console.log('  - Added debug marker at:', x, y + 1, z);
+
+            // Add axis helper to show orientation
+            const axesHelper = new THREE.AxesHelper(1);
+            axesHelper.position.set(x, y, z);
+            scene.add(axesHelper);
+
             scene.add(modelClone);
             dancers.push(modelClone);
 
             console.log('✓ GLB dancer', index, 'added at position:', x, y - (center.y * scaleFactor), z);
+            console.log('  - Final scale:', modelClone.scale);
+            console.log('  - Final position:', modelClone.position);
             console.log('  - Scale factor:', scaleFactor);
             console.log('  - Mesh count:', meshCount);
             console.log('  - Model children count:', modelClone.children.length);
+            console.log('  - Model visible:', modelClone.visible);
+            console.log('  - In scene:', scene.children.includes(modelClone));
 
             // Set up animation mixer for any animations (rigged or keyframe)
             if (riggedModel.animations && riggedModel.animations.length > 0) {
