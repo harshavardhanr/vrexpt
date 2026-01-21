@@ -1137,19 +1137,41 @@
 
             // Traverse and ensure all materials are visible
             let meshCount = 0;
+            console.log('  - Traversing model structure:');
             modelClone.traverse((child) => {
+                console.log('    Child:', child.type, 'Name:', child.name, 'Visible:', child.visible);
                 if (child.isMesh) {
                     meshCount++;
+                    const vertCount = child.geometry.attributes.position ? child.geometry.attributes.position.count : 0;
+                    console.log('      → MESH! Geometry:', child.geometry.type, 'Vertices:', vertCount);
+                    if (child.material) {
+                        console.log('      → Material:', child.material.type);
+                        if (child.material.color) {
+                            console.log('      → Color:', child.material.color.getHexString());
+                        }
+                    }
+
                     child.castShadow = true;
                     child.receiveShadow = true;
                     child.visible = true;
-                    child.frustumCulled = false; // Prevent culling issues
-                    // Make sure materials are visible
+                    child.frustumCulled = false;
+
+                    // Make materials very visible
                     if (child.material) {
                         child.material.side = THREE.DoubleSide;
                         child.material.transparent = false;
                         child.material.opacity = 1.0;
+                        child.material.depthTest = true;
+                        child.material.depthWrite = true;
                         child.material.needsUpdate = true;
+
+                        // Adjust material properties for visibility
+                        if (child.material.roughness !== undefined) {
+                            child.material.roughness = 0.8;
+                        }
+                        if (child.material.metalness !== undefined) {
+                            child.material.metalness = 0.1;
+                        }
                     }
                 }
             });
@@ -1184,6 +1206,11 @@
 
             scene.add(modelClone);
             dancers.push(modelClone);
+
+            // Add bounding box helper to visualize model bounds
+            const boxHelper = new THREE.BoxHelper(modelClone, index === 0 ? 0xff0000 : 0x00ff00);
+            scene.add(boxHelper);
+            console.log('  - Added bounding box helper');
 
             console.log('✓ GLB dancer', index, 'added at position:', x, y - (center.y * scaleFactor), z);
             console.log('  - Final scale:', modelClone.scale);
