@@ -1115,25 +1115,39 @@
             // Clone the loaded GLB model scene
             const modelClone = riggedModel.scene.clone(true);
 
-            // Position the model
-            modelClone.position.set(x, y, z);
+            // Calculate bounding box to understand model size
+            const box = new THREE.Box3().setFromObject(modelClone);
+            const size = box.getSize(new THREE.Vector3());
+            const center = box.getCenter(new THREE.Vector3());
 
-            // Scale the model - adjust this if model is too big/small
-            // Common GLB models might need scaling
-            modelClone.scale.set(1, 1, 1);
+            console.log('GLB model size:', size);
+            console.log('GLB model center offset:', center);
+
+            // Scale the model to be approximately 1.7 units tall (human height)
+            const currentHeight = size.y;
+            const targetHeight = 1.7;
+            const scaleFactor = targetHeight / currentHeight;
+            modelClone.scale.set(scaleFactor, scaleFactor, scaleFactor);
+
+            // Position the model - adjust Y so feet are on ground
+            modelClone.position.set(x, y - (center.y * scaleFactor), z);
 
             // Random facing toward stage
             modelClone.rotation.y = Math.random() * Math.PI * 0.5 - Math.PI * 0.25;
 
             // Traverse and ensure all materials are visible
+            let meshCount = 0;
             modelClone.traverse((child) => {
                 if (child.isMesh) {
+                    meshCount++;
                     child.castShadow = true;
                     child.receiveShadow = true;
+                    child.visible = true;
                     // Make sure materials are visible
                     if (child.material) {
                         child.material.side = THREE.DoubleSide;
-                        child.visible = true;
+                        child.material.transparent = false;
+                        child.material.opacity = 1.0;
                     }
                 }
             });
@@ -1153,7 +1167,9 @@
             scene.add(modelClone);
             dancers.push(modelClone);
 
-            console.log('GLB dancer added at position:', x, y, z);
+            console.log('✓ GLB dancer', index, 'added at position:', x, y - (center.y * scaleFactor), z);
+            console.log('  - Scale factor:', scaleFactor);
+            console.log('  - Mesh count:', meshCount);
             console.log('  - Model children count:', modelClone.children.length);
 
             // Set up animation mixer for any animations (rigged or keyframe)
