@@ -790,8 +790,8 @@
         function createSeating() {
             const seatColors = [NEON_PINK, NEON_PURPLE, NEON_BLUE, NEON_CYAN, NEON_YELLOW];
             
-            // Create rows of seats - positioned closer due to smaller dance floor
-            for (let row = 0; row < 5; row++) {
+            // Create rows of seats - reduced to 3 rows for better sightlines
+            for (let row = 0; row < 3; row++) {
                 const rowZ = -4 + row * 3.5;  // Start closer, slightly tighter rows
                 const rowY = 0.5 + row * 0.7;
                 const seatsInRow = 10 + row * 2;
@@ -1076,16 +1076,30 @@
 
         function createRiggedDancer(x, y, z, index) {
             // Clone the loaded GLB model scene
-            const modelClone = riggedHumanModel.scene.clone();
+            const modelClone = riggedHumanModel.scene.clone(true);
 
             // Position the model
             modelClone.position.set(x, y, z);
 
-            // Scale the model to match approximate dancer size (adjust as needed)
+            // Scale the model - adjust this if model is too big/small
+            // Common GLB models might need scaling
             modelClone.scale.set(1, 1, 1);
 
             // Random facing toward stage
             modelClone.rotation.y = Math.random() * Math.PI * 0.5 - Math.PI * 0.25;
+
+            // Traverse and ensure all materials are visible
+            modelClone.traverse((child) => {
+                if (child.isMesh) {
+                    child.castShadow = true;
+                    child.receiveShadow = true;
+                    // Make sure materials are visible
+                    if (child.material) {
+                        child.material.side = THREE.DoubleSide;
+                        child.visible = true;
+                    }
+                }
+            });
 
             // Store metadata
             modelClone.userData = {
@@ -1102,24 +1116,32 @@
             scene.add(modelClone);
             dancers.push(modelClone);
 
-            // Set up animation mixer if model has animations
+            console.log('GLB dancer added at position:', x, y, z);
+            console.log('  - Model children count:', modelClone.children.length);
+
+            // Set up animation mixer for any animations (rigged or keyframe)
             if (riggedHumanModel.animations && riggedHumanModel.animations.length > 0) {
                 const mixer = new THREE.AnimationMixer(modelClone);
 
-                // Play the first animation (or loop through all)
-                const clip = riggedHumanModel.animations[0];
-                const action = mixer.clipAction(clip);
-                action.play();
+                // Play all animations or just the first one
+                riggedHumanModel.animations.forEach((clip, clipIndex) => {
+                    const action = mixer.clipAction(clip);
+                    action.play();
+                    if (clipIndex === 0) {
+                        console.log('  - Playing animation:', clip.name || 'Animation ' + clipIndex);
+                        console.log('  - Duration:', clip.duration + 's');
+                    }
+                });
 
                 // Store mixer with time offset for variety
                 animationMixers.push({
                     mixer: mixer,
-                    timeOffset: Math.random() * clip.duration
+                    timeOffset: Math.random() * (riggedHumanModel.animations[0].duration || 1)
                 });
 
-                console.log('Animation set up for rigged dancer', index);
+                console.log('  ✓ Animation mixer set up for dancer', index);
             } else {
-                console.warn('No animations found in rigged human model');
+                console.warn('  ⚠ No animations found in GLB model');
             }
         }
 
