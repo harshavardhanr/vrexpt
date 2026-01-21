@@ -251,6 +251,7 @@
         import { XRControllerModelFactory } from 'three/addons/webxr/XRControllerModelFactory.js';
         import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
         import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+        import { SkeletonUtils } from 'three/addons/utils/SkeletonUtils.js';
 
         // Scene state
         let scene, camera, renderer, controls;
@@ -1112,8 +1113,8 @@
         }
 
         function createRiggedDancer(x, y, z, index, riggedModel) {
-            // Clone the loaded GLB model scene
-            const modelClone = riggedModel.scene.clone(true);
+            // Clone the loaded GLB model scene using SkeletonUtils for proper skeleton cloning
+            const modelClone = SkeletonUtils.clone(riggedModel.scene);
 
             // Calculate bounding box to understand model size
             const box = new THREE.Box3().setFromObject(modelClone);
